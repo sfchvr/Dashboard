@@ -69,60 +69,51 @@
     </div>
 
     <script>
-        // Usamos la API de visualización de Google para evitar bloqueos CORS
         const spreadsheetId = "1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw";
-        const urlConsulta = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&tq&gid=919344298`;
+        // Consultamos específicamente el rango que me has dicho para ir sobre seguro
+        const urlConsulta = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&gid=919344298&range=G2:H3`;
 
         async function actualizarDatos() {
             const estado = document.getElementById('mensaje-estado');
             try {
                 const respuesta = await fetch(urlConsulta);
                 const texto = await respuesta.text();
-                
-                // Limpiamos el texto que devuelve Google para convertirlo en JSON puro
                 const jsonTexto = texto.substring(texto.indexOf("{"), texto.lastIndexOf("}") + 1);
                 const datos = JSON.parse(jsonTexto);
                 const filas = datos.table.rows;
 
-                const obtenerValor = (filaIdx, colIdx) => {
+                const obtenerValor = (f, c) => {
                     try {
-                        const celda = filas[filaIdx].c[colIdx];
-                        return celda ? (celda.v || 0) : 0;
+                        const val = filas[f].c[c].v;
+                        return typeof val === 'number' ? val : 0;
                     } catch(e) { return 0; }
                 };
 
-                // Ajustamos la lectura a las celdas finales de las filas 1 y 2
-                // Basado en tu estructura: el final de la fila suele contener los totales
-                const numColumnas = filas[0].c.length;
-                
-                let saldoReal = obtenerValor(0, numColumnas - 1);
-                let gastoTotal = obtenerValor(0, numColumnas - 2);
-                let ingresosMes = obtenerValor(1, numColumnas - 1);
-
-                const presupuesto = 1200;
-                const disponible = presupuesto + (gastoTotal); // Si el gasto es negativo, se resta solo
+                // Mapeo según tus indicaciones:
+                // En el rango G2:H3 -> G es col 0, H es col 1 | Fila 2 es idx 0, Fila 3 es idx 1
+                let gastoTotal = obtenerValor(0, 0);  // G2
+                let disponible = obtenerValor(0, 1);  // H2
+                let saldoReal = obtenerValor(0, 1);   // H2 (misma que disponible)
+                let ingresosMes = obtenerValor(1, 0); // G3
 
                 const formato = (n) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
 
-                // Actualizamos la web
                 document.getElementById('ingresos-mes').innerText = formato(ingresosMes);
                 document.getElementById('gasto-actual').innerText = formato(Math.abs(gastoTotal));
                 document.getElementById('disponible').innerText = formato(disponible);
                 document.getElementById('saldo-real').innerText = formato(saldoReal);
 
-                estado.innerText = "✅ Sincronizado correctamente";
+                estado.innerText = "✅ Datos reales sincronizados";
                 estado.style.color = "#888";
 
             } catch (e) {
-                console.error("Error de sincronización:", e);
-                estado.innerText = "⚠️ Error de conexión. Reintentando en 5 segundos...";
+                console.error(e);
+                estado.innerText = "⚠️ Error al leer las celdas G2:H3";
                 estado.style.color = "#ff4444";
-                setTimeout(actualizarDatos, 5000);
             }
         }
 
         actualizarDatos();
-        // Actualizar cada 5 minutos
         setInterval(actualizarDatos, 300000);
     </script>
 </body>

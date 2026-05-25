@@ -71,77 +71,58 @@
     <script>
         const spreadsheetId = "1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw";
         const gid = "919344298";
-        // Exportamos a CSV para saltar restricciones de la API de visualización
-        const urlCsv = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
-        const proxy = "https://api.allorigins.win/raw?url=";
+        // URL optimizada para evitar problemas de CORS y formato
+        const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&gid=${gid}&t=${Date.now()}`;
 
         async function actualizarDatos() {
             const estado = document.getElementById('mensaje-estado');
             try {
-                // Añadimos un timestamp para evitar que el navegador guarde una copia vieja (cache)
-                const respuesta = await fetch(proxy + encodeURIComponent(urlCsv + "&t=" + Date.now()));
+                const respuesta = await fetch(url);
                 if (!respuesta.ok) throw new Error("Error de red");
-
-                const texto = await respuesta.text();
                 
-                // Procesamos el CSV considerando que los valores pueden tener comas internas si están entre comillas
-                const filas = texto.split("\n").map(fila => {
-                    const celdas = [];
-                    let inicio = 0;
-                    let dentroComillas = false;
-                    for (let i = 0; i < fila.length; i++) {
-                        if (fila[i] === '"') dentroComillas = !dentroComillas;
-                        if (fila[i] === ',' && !dentroComillas) {
-                            celdas.push(fila.substring(inicio, i).replace(/"/g, '').trim());
-                            inicio = i + 1;
-                        }
-                    }
-                    celdas.push(fila.substring(inicio).replace(/"/g, '').trim());
-                    return celdas;
-                });
+                const texto = await respuesta.text();
+                // Limpieza del JSON que devuelve Google
+                const inicio = texto.indexOf('{');
+                const fin = texto.lastIndexOf('}') + 1;
+                const json = JSON.parse(texto.substring(inicio, fin));
+                
+                const filas = json.table.rows;
 
-                const limpiarNumero = (val) => {
-                    if (!val) return 0;
-                    // Maneja formatos europeos: quita puntos de miles y cambia coma decimal por punto
-                    let limpio = val.replace(/[^\d.,-]/g, '');
-                    if (limpio.includes(',') && limpio.includes('.')) {
-                        limpio = limpio.replace(/\./g, '').replace(',', '.');
-                    } else {
-                        limpio = limpio.replace(',', '.');
-                    }
-                    return parseFloat(limpio) || 0;
+                // Función segura para obtener datos (G es columna 6, H es columna 7)
+                const obtenerValor = (f, c) => {
+                    try {
+                        const celda = filas[f].c[c];
+                        return celda ? (celda.v || 0) : 0;
+                    } catch(e) { return 0; }
                 };
 
-                // Según tu Excel:
-                // G2 -> Fila 1 (filas[1]), Col G (indice 6) -> Gastos (-843,81)
-                // G3 -> Fila 2 (filas[2]), Col G (indice 6) -> Ingresos (580,53)
-                // H2 -> Fila 1 (filas[1]), Col H (indice 7) -> Saldo/Disponible (3135,31)
-                
-                let gastoTotal = limpiarNumero(filas[1][6]);
-                let ingresosMes = limpiarNumero(filas[2][6]);
-                let disponible = limpiarNumero(filas[1][7]);
-                let saldoReal = disponible;
+                // Mapeo según tu captura:
+                let gastos = obtenerValor(1, 6);   // Celda G2
+                let ingresos = obtenerValor(2, 6); // Celda G3
+                let saldoReal = obtenerValor(1, 7); // Celda H2
 
-                const formato = (n) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
+                const formato = (n) => Math.abs(n).toLocaleString('es-ES', { 
+                    style: 'currency', 
+                    currency: 'EUR' 
+                });
 
-                document.getElementById('ingresos-mes').innerText = formato(ingresosMes);
-                document.getElementById('gasto-actual').innerText = formato(Math.abs(gastoTotal));
-                document.getElementById('disponible').innerText = formato(disponible);
+                document.getElementById('ingresos-mes').innerText = formato(ingresos);
+                document.getElementById('gasto-actual').innerText = formato(gastos);
+                document.getElementById('disponible').innerText = formato(saldoReal);
                 document.getElementById('saldo-real').innerText = formato(saldoReal);
 
-                estado.innerText = "✅ Sincronización completa";
+                estado.innerText = "✅ Sincronizado correctamente";
                 estado.style.color = "#03dac6";
 
             } catch (e) {
-                console.error("Error detallado:", e);
-                estado.innerText = "⚠️ Error de conexión. Reintentando...";
+                console.error("Error:", e);
+                estado.innerText = "⚠️ Error: Verifica que el archivo esté 'Publicado en la web'.";
                 estado.style.color = "#ff4444";
             }
         }
 
         actualizarDatos();
-        // Actualiza cada 5 minutos
-        setInterval(actualizarDatos, 300000);
+        setInterval(actualizarDatos, 300000); // Actualiza cada 5 minutos
     </script>
 </body>
 </html>

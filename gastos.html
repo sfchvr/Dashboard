@@ -86,36 +86,45 @@
                 
                 const filas = json.table.rows;
 
-                // Función mejorada: maneja tanto números como textos formateados de Google
-                const obtenerValor = (f, c) => {
+                const extraerDato = (f, c) => {
                     try {
                         const celda = filas[f].c[c];
                         if (!celda) return 0;
+                        
+                        // Si es un número puro
                         if (typeof celda.v === 'number') return celda.v;
-                        // Si viene como texto (f), limpiamos símbolos y convertimos
-                        if (celda.f) {
-                            let limpio = celda.f.replace(/[^\d.,-]/g, '').replace(/\./g, '').replace(',', '.');
-                            return parseFloat(limpio) || 0;
+                        
+                        // Si es texto (f) o valor (v) string, limpiamos a fondo
+                        let crudo = (celda.f || celda.v || "0").toString();
+                        
+                        // Eliminamos todo menos números, comas, puntos y el signo negativo
+                        let limpio = crudo.replace(/[^\d.,-]/g, '');
+                        
+                        // Convertimos formato español (1.234,56) a estándar JS (1234.56)
+                        if (limpio.includes(',') && limpio.includes('.')) {
+                            limpio = limpio.replace(/\./g, '').replace(',', '.');
+                        } else {
+                            limpio = limpio.replace(',', '.');
                         }
-                        return 0;
+                        
+                        return parseFloat(limpio) || 0;
                     } catch(e) { return 0; }
                 };
 
-                // MAPEO FINAL (Basado en el desplazamiento de fila detectado en consola)
-                // Fila 1 en código = Fila 2 en Excel | Fila 2 en código = Fila 3 en Excel
-                let gastos = obtenerValor(1, 6);     // G2: -843,81
-                let ingresos = obtenerValor(2, 6);   // G3: 580,53
-                let disponible = obtenerValor(1, 7); // H2: 3135,53
+                // Coordenadas confirmadas:
+                let gastos = extraerDato(1, 6);     // G2
+                let ingresos = extraerDato(2, 6);   // G3
+                let disponible = extraerDato(1, 7); // H2
 
-                const formato = (n) => Math.abs(n).toLocaleString('es-ES', { 
+                const moneda = (n) => Math.abs(n).toLocaleString('es-ES', { 
                     style: 'currency', 
                     currency: 'EUR' 
                 });
 
-                document.getElementById('ingresos-mes').innerText = formato(ingresos);
-                document.getElementById('gasto-actual').innerText = formato(gastos);
-                document.getElementById('disponible').innerText = formato(disponible);
-                document.getElementById('saldo-real').innerText = formato(disponible);
+                document.getElementById('ingresos-mes').innerText = moneda(ingresos);
+                document.getElementById('gasto-actual').innerText = moneda(gastos);
+                document.getElementById('disponible').innerText = moneda(disponible);
+                document.getElementById('saldo-real').innerText = moneda(disponible);
 
                 estado.innerText = "✅ Sincronizado correctamente";
                 estado.style.color = "#03dac6";

@@ -70,31 +70,45 @@
 
     <script>
         const spreadsheetId = "1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw";
-        // Consultamos específicamente el rango que me has dicho para ir sobre seguro
-        const urlConsulta = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&gid=919344298&range=G2:H3`;
+        const gid = "919344298";
+        // URL para exportar como CSV (más robusto que JSON para rangos específicos)
+        const urlCsv = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+        const proxy = "https://api.allorigins.win/raw?url=";
 
         async function actualizarDatos() {
             const estado = document.getElementById('mensaje-estado');
             try {
-                const respuesta = await fetch(urlConsulta);
-                const texto = await respuesta.text();
-                const jsonTexto = texto.substring(texto.indexOf("{"), texto.lastIndexOf("}") + 1);
-                const datos = JSON.parse(jsonTexto);
-                const filas = datos.table.rows;
+                const respuesta = await fetch(proxy + encodeURIComponent(urlCsv + "&t=" + Date.now()));
+                if (!respuesta.ok) throw new Error("Error de red");
 
-                const obtenerValor = (f, c) => {
-                    try {
-                        const val = filas[f].c[c].v;
-                        return typeof val === 'number' ? val : 0;
-                    } catch(e) { return 0; }
+                const texto = await respuesta.text();
+                
+                // Convertimos el CSV en una matriz (filas y columnas)
+                const filas = texto.split("\n").map(fila => 
+                    fila.split(",").map(celda => celda.replace(/"/g, '').trim())
+                );
+
+                const limpiarNumero = (val) => {
+                    if (!val) return 0;
+                    // Elimina símbolos de moneda y ajusta separadores
+                    let limpio = val.replace(/[^\d.,-]/g, '');
+                    if (limpio.includes(',') && limpio.includes('.')) {
+                        limpio = limpio.replace(/\./g, '').replace(',', '.');
+                    } else {
+                        limpio = limpio.replace(',', '.');
+                    }
+                    return parseFloat(limpio) || 0;
                 };
 
-                // Mapeo según tus indicaciones:
-                // En el rango G2:H3 -> G es col 0, H es col 1 | Fila 2 es idx 0, Fila 3 es idx 1
-                let gastoTotal = obtenerValor(0, 0);  // G2
-                let disponible = obtenerValor(0, 1);  // H2
-                let saldoReal = obtenerValor(0, 1);   // H2 (misma que disponible)
-                let ingresosMes = obtenerValor(1, 0); // G3
+                // Coordenadas:
+                // G2 -> Fila 2 (idx 1), Col G (idx 6)
+                // G3 -> Fila 3 (idx 2), Col G (idx 6)
+                // H2 -> Fila 2 (idx 1), Col H (idx 7)
+                
+                let gastoTotal = limpiarNumero(filas[1][6]);  // G2
+                let ingresosMes = limpiarNumero(filas[2][6]); // G3
+                let disponible = limpiarNumero(filas[1][7]);  // H2
+                let saldoReal = disponible;                   // H2
 
                 const formato = (n) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
 
@@ -103,12 +117,12 @@
                 document.getElementById('disponible').innerText = formato(disponible);
                 document.getElementById('saldo-real').innerText = formato(saldoReal);
 
-                estado.innerText = "✅ Datos reales sincronizados";
-                estado.style.color = "#888";
+                estado.innerText = "✅ Sincronización completa";
+                estado.style.color = "#03dac6";
 
             } catch (e) {
                 console.error(e);
-                estado.innerText = "⚠️ Error al leer las celdas G2:H3";
+                estado.innerText = "⚠️ Error de conexión. Reintentando...";
                 estado.style.color = "#ff4444";
             }
         }

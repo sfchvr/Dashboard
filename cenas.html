@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Menú de Cenas - Jorge</title>
+    <style>
+        body { background-color: #121212; color: white; font-family: sans-serif; padding: 40px; text-align: center; }
+        .contenedor-platos { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+        .plato { 
+            background: #1e1e1e; border: 1px solid #333; border-radius: 15px; 
+            width: 300px; padding: 15px; transition: 0.3s;
+        }
+        .plato:hover { border-color: #03dac6; }
+        .foto-comida { 
+            width: 100%; height: 200px; background-color: #333; /* Aquí irán las fotos */
+            border-radius: 10px; object-fit: cover;
+        }
+        h2 { color: #03dac6; }
+        p { color: #ccc; font-size: 0.9rem; }
+
+        /* Estilo para el nuevo botón de volver */
+        .boton-volver {
+            display: inline-block;
+            margin-top: 50px;
+            padding: 12px 25px;
+            background-color: transparent;
+            color: #888;
+            text-decoration: none;
+            border: 1px solid #444;
+            border-radius: 10px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        .boton-volver:hover {
+            color: white;
+            border-color: #bb86fc;
+            background-color: rgba(187, 134, 252, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>📋 Sugerencias para cenar</h1>
+    <div class="contenedor-platos">
+        
+        <div class="plato">
+            <img src="tortilla.png" class="foto-comida">
+            <h2>Tortilla Española</h2>
+            <p>Un clásico que nunca falla. Con o sin cebolla (tú mandas, Jorge). Acompaña con un poco de pan con tomate.</p>
+        </div>
+
+        <div class="plato">
+            <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400" class="foto-comida">
+            <h2>Ensalada Salmón</h2>
+            <p>Ligera y nutritiva. Salmón ahumado, aguacate, brotes verdes y un toque de sésamo.</p>
+        </div>
+
+        <div class="plato">
+            <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400" class="foto-comida">
+            <h2>Pizza Casera</h2>
+            <p>Para el viernes noche. Masa fina, mucho queso y tus ingredientes favoritos.</p>
+        </div>
+
+    </div>
+
+    <!-- El botón que faltaba -->
+    <a href="index.html" class="boton-volver">← Volver al Panel de Control</a>
+
+</body>
+</html>

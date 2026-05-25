@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Control de Gastos - Jorge</title>
+    <style>
+        body { background-color: #121212; color: white; font-family: sans-serif; padding: 40px; text-align: center; }
+        .contenedor-gastos { max-width: 1100px; margin: auto; text-align: left; }
+        .boton-registro { display: block; width: 100%; padding: 15px; background-color: #03dac6; color: black; text-align: center; border-radius: 10px; font-weight: bold; text-decoration: none; margin-bottom: 30px; transition: 0.3s; }
+        .boton-registro:hover { background-color: #bb86fc; transform: translateY(-3px); }
+        .resumen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 40px; }
+        .tarjeta { background: #1e1e1e; padding: 20px; border-radius: 15px; text-align: center; border: 1px solid #333; }
+        .tarjeta h3 { margin: 0; font-size: 0.8rem; color: #888; text-transform: uppercase; }
+        .tarjeta p { font-size: 1.4rem; margin: 10px 0 0 0; font-weight: bold; color: #03dac6; }
+        .tarjeta p.saldo { color: #bb86fc; }
+        .tarjeta p.ingreso { color: #4caf50; }
+        .boton-volver { display: inline-block; margin-top: 40px; color: #888; text-decoration: none; }
+        .boton-volver:hover { color: white; }
+    </style>
+</head>
+<body>
+    <h1>📊 Control de Gastos - Mayo 2026</h1>
+    <div class="contenedor-gastos">
+        <a href="https://docs.google.com/spreadsheets/d/1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw/edit" target="_blank" class="boton-registro">📝 EDITAR EN GOOGLE SHEETS</a>
+        <div class="resumen">
+            <div class="tarjeta"><h3>Ingresos Mes</h3><p id="ingresos-mes" class="ingreso">--</p></div>
+            <div class="tarjeta"><h3>Gastos Mes</h3><p id="gasto-actual">--</p></div>
+            <div class="tarjeta"><h3>Disponible</h3><p id="disponible">--</p></div>
+            <div class="tarjeta"><h3>Saldo Real</h3><p id="saldo-real" class="saldo">--</p></div>
+        </div>
+        <a href="index.html" class="boton-volver">← Volver al Portal Principal</a>
+    </div>
+
+    <script>
+        // Enlace al CSV de Google
+        const urlCsv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRAzpZp2UqQh77OQrie_aUDu2oUWnzLhtQz12M3_qXJ1YVl5Ly9PIlgLCtRHf0A9V7HXm5_L-iEPQeZ/pub?output=csv";
+        
+        // Proxy para evitar el error CORS en local
+        const proxy = "https://api.allorigins.win/raw?url=";
+
+        async function actualizarDatos() {
+            try {
+                // Intentamos usar el proxy para saltar la seguridad del navegador
+                const respuesta = await fetch(proxy + encodeURIComponent(urlCsv + "&t=" + Date.now()));
+                if (!respuesta.ok) throw new Error("No se pudo conectar");
+
+                const texto = await respuesta.text();
+                
+                // Procesamos el texto (separando por filas y comas)
+                const filas = texto.split("\n").map(f => f.split(","));
+                
+                const limpiar = (txt) => {
+                    if(!txt) return 0;
+                    // Limpia comillas, espacios y ajusta decimales
+                    let n = txt.replace(/"/g, '').replace(/\s/g, '').replace(',', '.');
+                    return parseFloat(n) || 0;
+                };
+
+                // Identificamos las filas según tu estructura
+                const fila2 = filas[1] || [];
+                const fila3 = filas[2] || [];
+
+                // Quitamos celdas vacías para no errar el tiro
+                const datosF2 = fila2.filter(c => c.trim() !== "");
+                const datosF3 = fila3.filter(c => c.trim() !== "");
+
+                // Asignación de valores
+                let saldoReal = limpiar(datosF2[datosF2.length - 1]);
+                let gastoTotal = limpiar(datosF2[datosF2.length - 2]);
+                let ingresosMes = limpiar(datosF3[datosF3.length - 1]);
+
+                const presupuesto = 1200;
+                const disponible = presupuesto + gastoTotal;
+
+                const formato = (n) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
+
+                // Actualizamos la web
+                document.getElementById('ingresos-mes').innerText = formato(ingresosMes);
+                document.getElementById('gasto-actual').innerText = formato(Math.abs(gastoTotal));
+                document.getElementById('disponible').innerText = formato(disponible);
+                document.getElementById('saldo-real').innerText = formato(saldoReal);
+
+                console.log("¡Datos cargados con éxito, Jorge!");
+
+            } catch (e) {
+                console.error("Error detectado:", e);
+                // Mantenemos el aviso que te puse antes, pero más discreto
+                const aviso = document.createElement("p");
+                aviso.style.color = "#ff4444";
+                aviso.style.marginTop = "20px";
+                aviso.innerText = "⚠️ Error de conexión. Si estás en local, sube los cambios a GitHub para que funcione.";
+                document.querySelector('.contenedor-gastos').appendChild(aviso);
+            }
+        }
+
+        actualizarDatos();
+    </script>
+</body>
+</html>

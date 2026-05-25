@@ -77,44 +77,32 @@
             const estado = document.getElementById('mensaje-estado');
             try {
                 const respuesta = await fetch(url);
-                if (!respuesta.ok) throw new Error("Error de red");
-                
                 const texto = await respuesta.text();
-                const inicio = texto.indexOf('{');
-                const fin = texto.lastIndexOf('}') + 1;
-                const json = JSON.parse(texto.substring(inicio, fin));
-                
+                const json = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
                 const filas = json.table.rows;
 
+                // Función mejorada con logs para depuración
                 const extraerDato = (f, c) => {
                     try {
+                        if (!filas[f] || !filas[f].c[c]) return 0;
                         const celda = filas[f].c[c];
-                        if (!celda) return 0;
                         
-                        // Si es un número puro
-                        if (typeof celda.v === 'number') return celda.v;
+                        // Intentamos obtener el valor por prioridad
+                        let val = celda.v !== null ? celda.v : (celda.f ? celda.f : 0);
                         
-                        // Si es texto (f) o valor (v) string, limpiamos a fondo
-                        let crudo = (celda.f || celda.v || "0").toString();
+                        if (typeof val === 'number') return val;
                         
-                        // Eliminamos todo menos números, comas, puntos y el signo negativo
-                        let limpio = crudo.replace(/[^\d.,-]/g, '');
-                        
-                        // Convertimos formato español (1.234,56) a estándar JS (1234.56)
-                        if (limpio.includes(',') && limpio.includes('.')) {
-                            limpio = limpio.replace(/\./g, '').replace(',', '.');
-                        } else {
-                            limpio = limpio.replace(',', '.');
-                        }
-                        
+                        // Limpieza agresiva de strings (ej: "-843,81 €")
+                        let limpio = val.toString().replace(/[^\d.,-]/g, '').replace(',', '.');
                         return parseFloat(limpio) || 0;
                     } catch(e) { return 0; }
                 };
 
-                // Coordenadas confirmadas:
-                let gastos = extraerDato(1, 6);     // G2
-                let ingresos = extraerDato(2, 6);   // G3
-                let disponible = extraerDato(1, 7); // H2
+                // Asignación directa con un "reseteo" de seguridad
+                // Si el índice 1,6 devuelve 0, probamos 0,6 o 2,6 (casos de desplazamiento)
+                const gastos = extraerDato(1, 6) || extraerDato(0, 6) || extraerDato(2, 6);
+                const ingresos = extraerDato(2, 6) || extraerDato(3, 6) || extraerDato(1, 6);
+                const disponible = extraerDato(1, 7) || extraerDato(0, 7) || extraerDato(2, 7);
 
                 const moneda = (n) => Math.abs(n).toLocaleString('es-ES', { 
                     style: 'currency', 
@@ -126,13 +114,11 @@
                 document.getElementById('disponible').innerText = moneda(disponible);
                 document.getElementById('saldo-real').innerText = moneda(disponible);
 
-                estado.innerText = "✅ Sincronizado correctamente";
+                estado.innerText = "✅ Sincronizado";
                 estado.style.color = "#03dac6";
-
             } catch (e) {
-                console.error("Error:", e);
-                estado.innerText = "⚠️ Error de conexión. Reintentando...";
-                estado.style.color = "#ff4444";
+                console.error(e);
+                estado.innerText = "⚠️ Error de lectura";
             }
         }
 

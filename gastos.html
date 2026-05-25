@@ -2,98 +2,131 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Gastos - Jorge</title>
     <style>
-        body { background-color: #121212; color: white; font-family: sans-serif; padding: 40px; text-align: center; }
-        .contenedor-gastos { max-width: 1100px; margin: auto; text-align: left; }
-        .boton-registro { display: block; width: 100%; padding: 15px; background-color: #03dac6; color: black; text-align: center; border-radius: 10px; font-weight: bold; text-decoration: none; margin-bottom: 30px; transition: 0.3s; }
+        body { background-color: #121212; color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; text-align: center; margin: 0; }
+        .contenedor-gastos { max-width: 1100px; margin: auto; text-align: left; padding-top: 20px; }
+        h1 { color: #bb86fc; font-size: 1.8rem; margin-bottom: 30px; }
+        
+        .boton-registro { 
+            display: block; 
+            width: 100%; 
+            padding: 18px; 
+            background-color: #03dac6; 
+            color: black; 
+            text-align: center; 
+            border-radius: 12px; 
+            font-weight: bold; 
+            text-decoration: none; 
+            margin-bottom: 30px; 
+            transition: 0.3s;
+            box-sizing: border-box;
+        }
         .boton-registro:hover { background-color: #bb86fc; transform: translateY(-3px); }
-        .resumen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 40px; }
-        .tarjeta { background: #1e1e1e; padding: 20px; border-radius: 15px; text-align: center; border: 1px solid #333; }
-        .tarjeta h3 { margin: 0; font-size: 0.8rem; color: #888; text-transform: uppercase; }
-        .tarjeta p { font-size: 1.4rem; margin: 10px 0 0 0; font-weight: bold; color: #03dac6; }
+
+        .resumen { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 15px; 
+            margin-bottom: 40px; 
+        }
+        .tarjeta { 
+            background: #1e1e1e; 
+            padding: 25px; 
+            border-radius: 15px; 
+            text-align: center; 
+            border: 1px solid #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .tarjeta h3 { margin: 0; font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .tarjeta p { font-size: 1.6rem; margin: 15px 0 0 0; font-weight: bold; color: #03dac6; }
         .tarjeta p.saldo { color: #bb86fc; }
         .tarjeta p.ingreso { color: #4caf50; }
-        .boton-volver { display: inline-block; margin-top: 40px; color: #888; text-decoration: none; }
-        .boton-volver:hover { color: white; }
+
+        .boton-volver { display: inline-block; margin-top: 40px; color: #888; text-decoration: none; font-size: 0.9rem; }
+        .boton-volver:hover { color: white; text-decoration: underline; }
+        
+        #mensaje-estado { color: #888; font-size: 0.8rem; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <h1>📊 Control de Gastos - Mayo 2026</h1>
     <div class="contenedor-gastos">
+        <h1>📊 Gastos - Mayo 2026</h1>
+        
         <a href="https://docs.google.com/spreadsheets/d/1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw/edit" target="_blank" class="boton-registro">📝 EDITAR EN GOOGLE SHEETS</a>
+        
         <div class="resumen">
-            <div class="tarjeta"><h3>Ingresos Mes</h3><p id="ingresos-mes" class="ingreso">--</p></div>
-            <div class="tarjeta"><h3>Gastos Mes</h3><p id="gasto-actual">--</p></div>
-            <div class="tarjeta"><h3>Disponible</h3><p id="disponible">--</p></div>
-            <div class="tarjeta"><h3>Saldo Real</h3><p id="saldo-real" class="saldo">--</p></div>
+            <div class="tarjeta"><h3>Ingresos Mes</h3><p id="ingresos-mes" class="ingreso">0,00 €</p></div>
+            <div class="tarjeta"><h3>Gastos Mes</h3><p id="gasto-actual">0,00 €</p></div>
+            <div class="tarjeta"><h3>Disponible</h3><p id="disponible">0,00 €</p></div>
+            <div class="tarjeta"><h3>Saldo Real</h3><p id="saldo-real" class="saldo">0,00 €</p></div>
         </div>
+
+        <p id="mensaje-estado">Sincronizando con Google Sheets...</p>
+
         <a href="index.html" class="boton-volver">← Volver al Portal Principal</a>
     </div>
 
     <script>
-        // Enlace al CSV de Google
-        const urlCsv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRAzpZp2UqQh77OQrie_aUDu2oUWnzLhtQz12M3_qXJ1YVl5Ly9PIlgLCtRHf0A9V7HXm5_L-iEPQeZ/pub?output=csv";
-        
-        // Proxy para evitar el error CORS en local
+        // Tu enlace CSV directo
+        const urlCsv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRAzpZp2UqQh77OQrie_aUDu2oUWnzLhtQz12M3_qXJ1YVl5Ly9PIlgLCtRHf0A9V7HXm5_L-iEPQeZ/pub?gid=919344298&single=true&output=csv";
         const proxy = "https://api.allorigins.win/raw?url=";
 
         async function actualizarDatos() {
+            const estado = document.getElementById('mensaje-estado');
             try {
-                // Intentamos usar el proxy para saltar la seguridad del navegador
                 const respuesta = await fetch(proxy + encodeURIComponent(urlCsv + "&t=" + Date.now()));
-                if (!respuesta.ok) throw new Error("No se pudo conectar");
+                if (!respuesta.ok) throw new Error("Error de conexión");
 
                 const texto = await respuesta.text();
+                // Separamos por filas y limpiamos espacios/comillas
+                const filas = texto.split("\n").map(f => f.split(",").map(c => c.replace(/"/g, '').trim()));
                 
-                // Procesamos el texto (separando por filas y comas)
-                const filas = texto.split("\n").map(f => f.split(","));
-                
-                const limpiar = (txt) => {
-                    if(!txt) return 0;
-                    // Limpia comillas, espacios y ajusta decimales
-                    let n = txt.replace(/"/g, '').replace(/\s/g, '').replace(',', '.');
-                    return parseFloat(n) || 0;
+                const limpiarNumero = (val) => {
+                    if (!val) return 0;
+                    // Maneja formato europeo (punto para miles, coma para decimales) o americano
+                    let limpio = val.replace(/[^\d.,-]/g, '');
+                    if (limpio.includes(',') && limpio.includes('.')) {
+                        limpio = limpio.replace(/\./g, '').replace(',', '.');
+                    } else {
+                        limpio = limpio.replace(',', '.');
+                    }
+                    return parseFloat(limpio) || 0;
                 };
 
-                // Identificamos las filas según tu estructura
-                const fila2 = filas[1] || [];
-                const fila3 = filas[2] || [];
+                // Asumimos que los datos clave están en la segunda y tercera fila según tu lógica
+                const filaValores = filas[1] || [];
+                const filaExtra = filas[2] || [];
 
-                // Quitamos celdas vacías para no errar el tiro
-                const datosF2 = fila2.filter(c => c.trim() !== "");
-                const datosF3 = fila3.filter(c => c.trim() !== "");
+                // Ajustamos la posición según tu hoja (últimas columnas suelen ser los totales)
+                let saldoReal = limpiarNumero(filaValores[filaValores.length - 1]);
+                let gastoTotal = limpiarNumero(filaValores[filaValores.length - 2]);
+                let ingresosMes = limpiarNumero(filaExtra[filaExtra.length - 1]);
 
-                // Asignación de valores
-                let saldoReal = limpiar(datosF2[datosF2.length - 1]);
-                let gastoTotal = limpiar(datosF2[datosF2.length - 2]);
-                let ingresosMes = limpiar(datosF3[datosF3.length - 1]);
-
-                const presupuesto = 1200;
-                const disponible = presupuesto + gastoTotal;
+                const presupuesto = 1200; // Tu presupuesto base
+                const disponible = presupuesto + gastoTotal; // gastoTotal suele venir en negativo de Sheets
 
                 const formato = (n) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
 
-                // Actualizamos la web
+                // Actualizar interfaz
                 document.getElementById('ingresos-mes').innerText = formato(ingresosMes);
                 document.getElementById('gasto-actual').innerText = formato(Math.abs(gastoTotal));
                 document.getElementById('disponible').innerText = formato(disponible);
                 document.getElementById('saldo-real').innerText = formato(saldoReal);
 
-                console.log("¡Datos cargados con éxito, Jorge!");
+                estado.innerText = "✅ Sincronizado hace un momento";
 
             } catch (e) {
-                console.error("Error detectado:", e);
-                // Mantenemos el aviso que te puse antes, pero más discreto
-                const aviso = document.createElement("p");
-                aviso.style.color = "#ff4444";
-                aviso.style.marginTop = "20px";
-                aviso.innerText = "⚠️ Error de conexión. Si estás en local, sube los cambios a GitHub para que funcione.";
-                document.querySelector('.contenedor-gastos').appendChild(aviso);
+                console.error(e);
+                estado.innerText = "⚠️ Error de conexión. Revisa que el Sheets esté publicado.";
+                estado.style.color = "#ff4444";
             }
         }
 
         actualizarDatos();
+        // Se actualiza cada 5 minutos por si editas el Sheets
+        setInterval(actualizarDatos, 300000);
     </script>
 </body>
 </html>

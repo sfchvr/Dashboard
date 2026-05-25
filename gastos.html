@@ -86,24 +86,32 @@
                 
                 const filas = json.table.rows;
 
+                // Función mejorada: maneja tanto números como textos formateados de Google
                 const obtenerValor = (f, c) => {
                     try {
                         const celda = filas[f].c[c];
-                        return (celda && typeof celda.v === 'number') ? celda.v : 0;
+                        if (!celda) return 0;
+                        if (typeof celda.v === 'number') return celda.v;
+                        // Si viene como texto (f), limpiamos símbolos y convertimos
+                        if (celda.f) {
+                            let limpio = celda.f.replace(/[^\d.,-]/g, '').replace(/\./g, '').replace(',', '.');
+                            return parseFloat(limpio) || 0;
+                        }
+                        return 0;
                     } catch(e) { return 0; }
                 };
 
-                // MAPEO CORREGIDO SEGÚN CAPTURA EXCEL:
-                let gastos = obtenerValor(1, 6);    // Fila 2, Col G (G2)
-                let ingresos = obtenerValor(2, 6);  // Fila 3, Col G (G3)
-                let disponible = obtenerValor(1, 7); // Fila 2, Col H (H2)
+                // MAPEO FINAL (Basado en el desplazamiento de fila detectado en consola)
+                // Fila 1 en código = Fila 2 en Excel | Fila 2 en código = Fila 3 en Excel
+                let gastos = obtenerValor(1, 6);     // G2: -843,81
+                let ingresos = obtenerValor(2, 6);   // G3: 580,53
+                let disponible = obtenerValor(1, 7); // H2: 3135,53
 
                 const formato = (n) => Math.abs(n).toLocaleString('es-ES', { 
                     style: 'currency', 
                     currency: 'EUR' 
                 });
 
-                // Asignación a las tarjetas correspondientes
                 document.getElementById('ingresos-mes').innerText = formato(ingresos);
                 document.getElementById('gasto-actual').innerText = formato(gastos);
                 document.getElementById('disponible').innerText = formato(disponible);

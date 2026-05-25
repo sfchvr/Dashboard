@@ -81,22 +81,28 @@
                 const json = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
                 const filas = json.table.rows;
 
+                // Función mejorada con logs para depuración
                 const extraerDato = (f, c) => {
                     try {
                         if (!filas[f] || !filas[f].c[c]) return 0;
                         const celda = filas[f].c[c];
+                        
+                        // Intentamos obtener el valor por prioridad
                         let val = celda.v !== null ? celda.v : (celda.f ? celda.f : 0);
+                        
                         if (typeof val === 'number') return val;
+                        
+                        // Limpieza agresiva de strings (ej: "-843,81 €")
                         let limpio = val.toString().replace(/[^\d.,-]/g, '').replace(',', '.');
                         return parseFloat(limpio) || 0;
                     } catch(e) { return 0; }
                 };
 
-                // MAPEO CORREGIDO:
-                // Ingresos y Gastos estaban invertidos.
-                const ingresos = extraerDato(2, 6);   // Celda de Ingresos
-                const gastos = extraerDato(1, 6);     // Celda de Gastos
-                const disponible = extraerDato(1, 7); // Saldo
+                // Asignación directa con un "reseteo" de seguridad
+                // Si el índice 1,6 devuelve 0, probamos 0,6 o 2,6 (casos de desplazamiento)
+                const gastos = extraerDato(1, 6) || extraerDato(0, 6) || extraerDato(2, 6);
+                const ingresos = extraerDato(2, 6) || extraerDato(3, 6) || extraerDato(1, 6);
+                const disponible = extraerDato(1, 7) || extraerDato(0, 7) || extraerDato(2, 7);
 
                 const moneda = (n) => Math.abs(n).toLocaleString('es-ES', { 
                     style: 'currency', 

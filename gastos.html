@@ -69,63 +69,61 @@
     </div>
 
     <script>
-        // Tu enlace CSV directo
         const urlCsv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRAzpZp2UqQh77OQrie_aUDu2oUWnzLhtQz12M3_qXJ1YVl5Ly9PIlgLCtRHf0A9V7HXm5_L-iEPQeZ/pub?gid=919344298&single=true&output=csv";
         const proxy = "https://api.allorigins.win/raw?url=";
+
+        async function procesarDatos(texto) {
+            const filas = texto.trim().split("\n").map(f => f.split(",").map(c => c.replace(/"/g, '').trim()));
+            
+            const limpiarNumero = (val) => {
+                if (!val) return 0;
+                let limpio = val.replace(/[^\d.,-]/g, '').replace(',', '.');
+                return parseFloat(limpio) || 0;
+            };
+
+            const fila2 = filas[1] || [];
+            const fila3 = filas[2] || [];
+
+            let saldoReal = limpiarNumero(fila2[fila2.length - 1]);
+            let gastoTotal = limpiarNumero(fila2[fila2.length - 2]);
+            let ingresosMes = limpiarNumero(fila3[fila3.length - 1]);
+
+            const presupuesto = 1200;
+            const disponible = presupuesto + gastoTotal;
+
+            const formato = (n) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
+
+            document.getElementById('ingresos-mes').innerText = formato(ingresosMes);
+            document.getElementById('gasto-actual').innerText = formato(Math.abs(gastoTotal));
+            document.getElementById('disponible').innerText = formato(disponible);
+            document.getElementById('saldo-real').innerText = formato(saldoReal);
+        }
 
         async function actualizarDatos() {
             const estado = document.getElementById('mensaje-estado');
             try {
-                const respuesta = await fetch(proxy + encodeURIComponent(urlCsv + "&t=" + Date.now()));
-                if (!respuesta.ok) throw new Error("Error de conexión");
-
+                // Intento 1: Directo
+                const respuesta = await fetch(urlCsv + "&cache=" + Date.now());
+                if (!respuesta.ok) throw new Error("Salto al proxy");
                 const texto = await respuesta.text();
-                // Separamos por filas y limpiamos espacios/comillas
-                const filas = texto.split("\n").map(f => f.split(",").map(c => c.replace(/"/g, '').trim()));
-                
-                const limpiarNumero = (val) => {
-                    if (!val) return 0;
-                    // Maneja formato europeo (punto para miles, coma para decimales) o americano
-                    let limpio = val.replace(/[^\d.,-]/g, '');
-                    if (limpio.includes(',') && limpio.includes('.')) {
-                        limpio = limpio.replace(/\./g, '').replace(',', '.');
-                    } else {
-                        limpio = limpio.replace(',', '.');
-                    }
-                    return parseFloat(limpio) || 0;
-                };
-
-                // Asumimos que los datos clave están en la segunda y tercera fila según tu lógica
-                const filaValores = filas[1] || [];
-                const filaExtra = filas[2] || [];
-
-                // Ajustamos la posición según tu hoja (últimas columnas suelen ser los totales)
-                let saldoReal = limpiarNumero(filaValores[filaValores.length - 1]);
-                let gastoTotal = limpiarNumero(filaValores[filaValores.length - 2]);
-                let ingresosMes = limpiarNumero(filaExtra[filaExtra.length - 1]);
-
-                const presupuesto = 1200; // Tu presupuesto base
-                const disponible = presupuesto + gastoTotal; // gastoTotal suele venir en negativo de Sheets
-
-                const formato = (n) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
-
-                // Actualizar interfaz
-                document.getElementById('ingresos-mes').innerText = formato(ingresosMes);
-                document.getElementById('gasto-actual').innerText = formato(Math.abs(gastoTotal));
-                document.getElementById('disponible').innerText = formato(disponible);
-                document.getElementById('saldo-real').innerText = formato(saldoReal);
-
-                estado.innerText = "✅ Sincronizado hace un momento";
-
+                await procesarDatos(texto);
+                estado.innerText = "✅ Sincronizado (Directo)";
             } catch (e) {
-                console.error(e);
-                estado.innerText = "⚠️ Error de conexión. Revisa que el Sheets esté publicado.";
-                estado.style.color = "#ff4444";
+                // Intento 2: Proxy
+                try {
+                    const resProxy = await fetch(proxy + encodeURIComponent(urlCsv + "&t=" + Date.now()));
+                    if (!resProxy.ok) throw new Error("Error total");
+                    const textoProxy = await resProxy.text();
+                    await procesarDatos(textoProxy);
+                    estado.innerText = "✅ Sincronizado (vía Proxy)";
+                } catch (err) {
+                    estado.innerText = "⚠️ Error de conexión. Revisa si el Sheets está publicado.";
+                    estado.style.color = "#ff4444";
+                }
             }
         }
 
         actualizarDatos();
-        // Se actualiza cada 5 minutos por si editas el Sheets
         setInterval(actualizarDatos, 300000);
     </script>
 </body>

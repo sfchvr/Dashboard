@@ -95,7 +95,7 @@
                 // Mapeo actualizado
                 const ingresos = extraerDato(2, 6) || extraerDato(1, 6) || extraerDato(3, 6);
                 const gastos = extraerDato(0, 6) || extraerDato(2, 6) || extraerDato(1, 6);
-                const balance = extraerDato(4, 6); // G5 es fila 4, columna 6
+                const balance = extraerDato(4, 6) || extraerDato(2, 6) || extraerDato(1, 6);
                 const saldo = extraerDato(1, 7) || extraerDato(0, 7) || extraerDato(2, 7);
 
                 const moneda = (n) => n.toLocaleString('es-ES', { 

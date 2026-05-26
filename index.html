@@ -34,11 +34,10 @@
         .widget-sevilla span { font-size: 0.7rem; text-transform: uppercase; opacity: 0.8; }
         .widget-sevilla p { margin: 5px 0; font-weight: bold; font-size: 1rem; color: white; }
 
-        /* Reloj y Tiempo */
+        /* Reloj */
         #reloj-contenedor { text-align: center; margin-bottom: 20px; }
         #reloj { font-size: 4rem; font-weight: bold; color: #03dac6; margin: 0; line-height: 1.1; }
         #fecha { font-size: 1rem; color: #888; text-transform: uppercase; margin-bottom: 5px; }
-        #clima { color: #ffb74d; font-weight: bold; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
 
         h1 { color: #bb86fc; font-size: 1.8rem; margin: 10px 0 5px 0; }
         
@@ -116,7 +115,6 @@
     <div id="reloj-contenedor">
         <p id="fecha">-- / -- / ----</p>
         <p id="reloj">00:00:00</p>
-        <div id="clima">☀️ Sevilla: <span id="temp-valor">--</span>°C</div>
     </div>
 
     <h1>Bienvenido, Jorge</h1>
@@ -128,4 +126,44 @@
         <a href="actividades.html" class="boton-principal btn-actividades"><span class="icon">🏃</span> Actividades</a>
     </div>
 
-    <div class
+    <div class="accesos-rapidos">
+        <a href="https://mail.google.com" target="_blank" class="link-rapido"><span>✉️</span> Correo</a>
+        <a href="https://www.marca.com" target="_blank" class="link-rapido"><span>🗞️</span> MARCA</a>
+        <a href="https://www.google.es/maps" target="_blank" class="link-rapido"><span>📍</span> Maps</a>
+    </div>
+
+    <script>
+        function actualizarReloj() {
+            const ahora = new Date();
+            document.getElementById('reloj').textContent = ahora.toLocaleTimeString('es-ES');
+            const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('fecha').textContent = ahora.toLocaleDateString('es-ES', opciones);
+        }
+        setInterval(actualizarReloj, 1000);
+        actualizarReloj();
+
+        async function actualizarWidget() {
+            const gidMundial = "431024044";
+            const spreadsheetId = "1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw";
+            const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&gid=${gidMundial}&t=${Date.now()}`;
+            
+            try {
+                const respuesta = await fetch(url);
+                const texto = await respuesta.text();
+                const json = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
+                const filas = json.table.rows;
+                
+                const rival = filas[0].c[0] ? (filas[0].c[0].f || filas[0].c[0].v) : "Sin partido";
+                const info = filas[0].c[1] ? (filas[0].c[1].f || filas[0].c[1].v) : "";
+                
+                document.getElementById('label-evento').innerText = "Próximo Partido ⚽";
+                document.getElementById('partido-rival').innerText = rival;
+                document.getElementById('partido-info').innerText = info;
+            } catch (e) {
+                document.getElementById('partido-rival').innerText = "Error de carga";
+            }
+        }
+        actualizarWidget();
+    </script>
+</body>
+</html>

@@ -59,7 +59,7 @@
         <div class="resumen">
             <div class="tarjeta"><h3>Ingresos Mes</h3><p id="ingresos-mes" class="ingreso">0,00 €</p></div>
             <div class="tarjeta"><h3>Gastos Mes</h3><p id="gasto-actual">0,00 €</p></div>
-            <div class="tarjeta"><h3>Disponible</h3><p id="disponible">0,00 €</p></div>
+            <div class="tarjeta"><h3>Balance Mensual</h3><p id="balance-mes">0,00 €</p></div>
             <div class="tarjeta"><h3>Saldo Real</h3><p id="saldo-real" class="saldo">0,00 €</p></div>
         </div>
 
@@ -81,40 +81,37 @@
                 const json = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
                 const filas = json.table.rows;
 
-                // Función mejorada con logs para depuración
                 const extraerDato = (f, c) => {
                     try {
                         if (!filas[f] || !filas[f].c[c]) return 0;
                         const celda = filas[f].c[c];
-                        
-                        // Intentamos obtener el valor por prioridad
                         let val = celda.v !== null ? celda.v : (celda.f ? celda.f : 0);
-                        
                         if (typeof val === 'number') return val;
-                        
-                        // Limpieza agresiva de strings (ej: "-843,81 €")
                         let limpio = val.toString().replace(/[^\d.,-]/g, '').replace(',', '.');
                         return parseFloat(limpio) || 0;
                     } catch(e) { return 0; }
                 };
 
-// ASIGNACIÓN DE DATOS (Mapeo de celdas)
-                // Ajustamos las filas para encontrar el dato correcto del gasto
-                // Si el gasto no está en la fila 0, buscará en la 2 o la 1.
-                
-                const gastos = extraerDato(0, 6) || extraerDato(2, 6) || extraerDato(1, 6);
+                // Mapeo actualizado
                 const ingresos = extraerDato(2, 6) || extraerDato(1, 6) || extraerDato(3, 6);
-                const disponible = extraerDato(1, 7) || extraerDato(0, 7) || extraerDato(2, 7);
+                const gastos = extraerDato(0, 6) || extraerDato(2, 6) || extraerDato(1, 6);
+                const balance = extraerDato(4, 6); // G5 es fila 4, columna 6
+                const saldo = extraerDato(1, 7) || extraerDato(0, 7) || extraerDato(2, 7);
 
-                const moneda = (n) => Math.abs(n).toLocaleString('es-ES', { 
+                const moneda = (n) => n.toLocaleString('es-ES', { 
                     style: 'currency', 
                     currency: 'EUR' 
                 });
 
                 document.getElementById('ingresos-mes').innerText = moneda(ingresos);
                 document.getElementById('gasto-actual').innerText = moneda(gastos);
-                document.getElementById('disponible').innerText = moneda(disponible);
-                document.getElementById('saldo-real').innerText = moneda(disponible);
+                
+                // Actualizar Balance con lógica de color
+                const elBalance = document.getElementById('balance-mes');
+                elBalance.innerText = moneda(balance);
+                elBalance.style.color = balance < 0 ? "#ff4444" : "#03dac6";
+                
+                document.getElementById('saldo-real').innerText = moneda(saldo);
 
                 estado.innerText = "✅ Sincronizado";
                 estado.style.color = "#03dac6";

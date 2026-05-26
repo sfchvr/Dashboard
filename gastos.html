@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -10,35 +11,14 @@
         h1 { color: #bb86fc; font-size: 1.8rem; margin-bottom: 30px; }
         
         .boton-registro { 
-            display: block; 
-            width: 100%; 
-            padding: 18px; 
-            background-color: #03dac6; 
-            color: black; 
-            text-align: center; 
-            border-radius: 12px; 
-            font-weight: bold; 
-            text-decoration: none; 
-            margin-bottom: 30px; 
-            transition: 0.3s;
-            box-sizing: border-box;
+            display: block; width: 100%; padding: 18px; background-color: #03dac6; color: black; 
+            text-align: center; border-radius: 12px; font-weight: bold; text-decoration: none; 
+            margin-bottom: 30px; transition: 0.3s; box-sizing: border-box;
         }
         .boton-registro:hover { background-color: #bb86fc; transform: translateY(-3px); }
 
-        .resumen { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-            gap: 15px; 
-            margin-bottom: 40px; 
-        }
-        .tarjeta { 
-            background: #1e1e1e; 
-            padding: 25px; 
-            border-radius: 15px; 
-            text-align: center; 
-            border: 1px solid #333;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
+        .resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 40px; }
+        .tarjeta { background: #1e1e1e; padding: 25px; border-radius: 15px; text-align: center; border: 1px solid #333; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .tarjeta h3 { margin: 0; font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
         .tarjeta p { font-size: 1.6rem; margin: 15px 0 0 0; font-weight: bold; color: #03dac6; }
         .tarjeta p.saldo { color: #bb86fc; }
@@ -46,14 +26,12 @@
 
         .boton-volver { display: inline-block; margin-top: 40px; color: #888; text-decoration: none; font-size: 0.9rem; }
         .boton-volver:hover { color: white; text-decoration: underline; }
-        
         #mensaje-estado { color: #888; font-size: 0.8rem; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="contenedor-gastos">
         <h1>📊 Gastos - Mayo 2026</h1>
-        
         <a href="https://docs.google.com/spreadsheets/d/1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw/edit" target="_blank" class="boton-registro">📝 EDITAR EN GOOGLE SHEETS</a>
         
         <div class="resumen">
@@ -64,7 +42,6 @@
         </div>
 
         <p id="mensaje-estado">Sincronizando con Google Sheets...</p>
-
         <a href="index.html" class="boton-volver">← Volver al Portal Principal</a>
     </div>
 
@@ -92,21 +69,17 @@
                     } catch(e) { return 0; }
                 };
 
-                // Mapeo actualizado
-                const ingresos = extraerDato(2, 6) || extraerDato(1, 6) || extraerDato(3, 6);
-                const gastos = extraerDato(0, 6) || extraerDato(2, 6) || extraerDato(1, 6);
-                const balance = extraerDato(4, 6); // G5 es fila 4, columna 6
-                const saldo = extraerDato(1, 7) || extraerDato(0, 7) || extraerDato(2, 7);
+                // Asignación ajustada a tus celdas reales:
+                const ingresos = extraerDato(2, 6);   // Fila 3, Columna G
+                const gastos = extraerDato(1, 6);     // Fila 2, Columna G
+                const balance = extraerDato(4, 6);    // Fila 5 (G5), Columna G
+                const saldo = extraerDato(1, 7);      // Fila 2, Columna H
 
-                const moneda = (n) => n.toLocaleString('es-ES', { 
-                    style: 'currency', 
-                    currency: 'EUR' 
-                });
+                const moneda = (n) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
 
                 document.getElementById('ingresos-mes').innerText = moneda(ingresos);
                 document.getElementById('gasto-actual').innerText = moneda(gastos);
                 
-                // Actualizar Balance con lógica de color
                 const elBalance = document.getElementById('balance-mes');
                 elBalance.innerText = moneda(balance);
                 elBalance.style.color = balance < 0 ? "#ff4444" : "#03dac6";

@@ -98,10 +98,12 @@
                     } catch(e) { return 0; }
                 };
 
-                // Asignación directa con un "reseteo" de seguridad
-                // Si el índice 1,6 devuelve 0, probamos 0,6 o 2,6 (casos de desplazamiento)
+// ASIGNACIÓN DE DATOS (Mapeo de celdas)
+                // Ajustamos las filas para encontrar el dato correcto del gasto
+                // Si el gasto no está en la fila 1, buscará en la 0 o la 2.
+                
                 const gastos = extraerDato(1, 6) || extraerDato(0, 6) || extraerDato(2, 6);
-                const ingresos = extraerDato(1, 6) || extraerDato(0, 6) || extraerDato(1, 6);
+                const ingresos = extraerDato(2, 6) || extraerDato(1, 6) || extraerDato(3, 6);
                 const disponible = extraerDato(1, 7) || extraerDato(0, 7) || extraerDato(2, 7);
 
                 const moneda = (n) => Math.abs(n).toLocaleString('es-ES', { 

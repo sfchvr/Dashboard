@@ -17,7 +17,7 @@
             overflow: hidden;
         }
 
-        /* Widget Mundial Actualizado */
+        /* Widget Mundial */
         .widget-sevilla {
             position: absolute;
             top: 20px;
@@ -116,7 +116,7 @@
     <div id="reloj-contenedor">
         <p id="fecha">-- / -- / ----</p>
         <p id="reloj">00:00:00</p>
-        <div id="clima">☀️ Sevilla: 24°C</div>
+        <div id="clima">☀️ Sevilla: <span id="temp-valor">--</span>°C</div>
     </div>
 
     <h1>Bienvenido, Jorge</h1>
@@ -128,45 +128,4 @@
         <a href="actividades.html" class="boton-principal btn-actividades"><span class="icon">🏃</span> Actividades</a>
     </div>
 
-    <div class="accesos-rapidos">
-        <a href="https://mail.google.com" target="_blank" class="link-rapido"><span>✉️</span> Correo</a>
-        <a href="https://www.marca.com" target="_blank" class="link-rapido"><span>🗞️</span> MARCA</a>
-        <a href="https://www.google.es/maps" target="_blank" class="link-rapido"><span>📍</span> Maps</a>
-    </div>
-
-    <script>
-        function actualizarReloj() {
-            const ahora = new Date();
-            document.getElementById('reloj').textContent = ahora.toLocaleTimeString('es-ES');
-            const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            document.getElementById('fecha').textContent = ahora.toLocaleDateString('es-ES', opciones);
-        }
-        setInterval(actualizarReloj, 1000);
-        actualizarReloj();
-
-        async function actualizarWidget() {
-            const gidMundial = "431024044";
-            const spreadsheetId = "1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw";
-            const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&gid=${gidMundial}&t=${Date.now()}`;
-            
-            try {
-                const respuesta = await fetch(url);
-                const texto = await respuesta.text();
-                const json = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
-                const filas = json.table.rows;
-                
-                // Priorizamos .f (valor formateado) para que el texto salga tal cual se escribe en el Excel
-                const rival = filas[0].c[0] ? (filas[0].c[0].f || filas[0].c[0].v) : "Sin partido";
-                const info = filas[0].c[1] ? (filas[0].c[1].f || filas[0].c[1].v) : "";
-                
-                document.getElementById('label-evento').innerText = "Próximo Partido ⚽";
-                document.getElementById('partido-rival').innerText = rival;
-                document.getElementById('partido-info').innerText = info;
-            } catch (e) {
-                document.getElementById('partido-rival').innerText = "Error de carga";
-            }
-        }
-        actualizarWidget();
-    </script>
-</body>
-</html>
+    <div class

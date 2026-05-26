@@ -144,7 +144,6 @@
         setInterval(actualizarReloj, 1000);
         actualizarReloj();
 
-        // Lógica de actualización del widget
         async function actualizarWidget() {
             const gidMundial = "431024044";
             const spreadsheetId = "1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw";
@@ -156,15 +155,15 @@
                 const json = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
                 const filas = json.table.rows;
                 
-                // Lee A2 (índice 0) y B2 (índice 1) de la primera fila de datos
-                const rival = filas[0].c[0] ? filas[0].c[0].v : "Sin partido";
-                const info = filas[0].c[1] ? filas[0].c[1].v : "";
+                // Priorizamos .f (valor formateado) para que el texto salga tal cual se escribe en el Excel
+                const rival = filas[0].c[0] ? (filas[0].c[0].f || filas[0].c[0].v) : "Sin partido";
+                const info = filas[0].c[1] ? (filas[0].c[1].f || filas[0].c[1].v) : "";
                 
                 document.getElementById('label-evento').innerText = "Próximo Partido ⚽";
                 document.getElementById('partido-rival').innerText = rival;
                 document.getElementById('partido-info').innerText = info;
             } catch (e) {
-                document.getElementById('partido-rival').innerText = "Actualiza el Excel";
+                document.getElementById('partido-rival').innerText = "Error de carga";
             }
         }
         actualizarWidget();

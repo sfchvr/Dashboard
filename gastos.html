@@ -100,9 +100,9 @@
 
 // ASIGNACIÓN DE DATOS (Mapeo de celdas)
                 // Ajustamos las filas para encontrar el dato correcto del gasto
-                // Si el gasto no está en la fila 1, buscará en la 0 o la 2.
+                // Si el gasto no está en la fila 0, buscará en la 2 o la 1.
                 
-                const gastos = extraerDato(1, 6) || extraerDato(0, 6) || extraerDato(2, 6);
+                const gastos = extraerDato(0, 6) || extraerDato(2, 6) || extraerDato(1, 6);
                 const ingresos = extraerDato(2, 6) || extraerDato(1, 6) || extraerDato(3, 6);
                 const disponible = extraerDato(1, 7) || extraerDato(0, 7) || extraerDato(2, 7);
 

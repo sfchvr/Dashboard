@@ -100,7 +100,7 @@
 
                 // Asignación directa con un "reseteo" de seguridad
                 // Si el índice 1,6 devuelve 0, probamos 0,6 o 2,6 (casos de desplazamiento)
-                const gastos = extraerDato(2, 6) || extraerDato(3, 6) || extraerDato(1, 6);
+                const gastos = extraerDato(2, 6) || extraerDato(0, 6) || extraerDato(2, 6);
                 const ingresos = extraerDato(1, 6) || extraerDato(0, 6) || extraerDato(2, 6);
                 const disponible = extraerDato(1, 7) || extraerDato(0, 7) || extraerDato(2, 7);
 

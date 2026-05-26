@@ -1,131 +1,128 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Gastos - Jorge</title>
-    <style>
-        body { background-color: #121212; color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; text-align: center; margin: 0; }
-        .contenedor-gastos { max-width: 1100px; margin: auto; text-align: left; padding-top: 20px; }
-        h1 { color: #bb86fc; font-size: 1.8rem; margin-bottom: 30px; }
-        
-        .boton-registro { 
-            display: block; 
-            width: 100%; 
-            padding: 18px; 
-            background-color: #03dac6; 
-            color: black; 
-            text-align: center; 
-            border-radius: 12px; 
-            font-weight: bold; 
-            text-decoration: none; 
-            margin-bottom: 30px; 
-            transition: 0.3s;
-            box-sizing: border-box;
-        }
-        .boton-registro:hover { background-color: #bb86fc; transform: translateY(-3px); }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Gastos - Jorge</title>
+    <style>
+        body { background-color: #121212; color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; text-align: center; margin: 0; }
+        .contenedor-gastos { max-width: 1100px; margin: auto; text-align: left; padding-top: 20px; }
+        h1 { color: #bb86fc; font-size: 1.8rem; margin-bottom: 30px; }
+        
+        .boton-registro { 
+            display: block; 
+            width: 100%; 
+            padding: 18px; 
+            background-color: #03dac6; 
+            color: black; 
+            text-align: center; 
+            border-radius: 12px; 
+            font-weight: bold; 
+            text-decoration: none; 
+            margin-bottom: 30px; 
+            transition: 0.3s;
+            box-sizing: border-box;
+        }
+        .boton-registro:hover { background-color: #bb86fc; transform: translateY(-3px); }
 
-        .resumen { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-            gap: 15px; 
-            margin-bottom: 40px; 
-        }
-        .tarjeta { 
-            background: #1e1e1e; 
-            padding: 25px; 
-            border-radius: 15px; 
-            text-align: center; 
-            border: 1px solid #333;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-        .tarjeta h3 { margin: 0; font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-        .tarjeta p { font-size: 1.6rem; margin: 15px 0 0 0; font-weight: bold; color: #03dac6; }
-        .tarjeta p.saldo { color: #bb86fc; }
-        .tarjeta p.ingreso { color: #4caf50; }
+        .resumen { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 15px; 
+            margin-bottom: 40px; 
+        }
+        .tarjeta { 
+            background: #1e1e1e; 
+            padding: 25px; 
+            border-radius: 15px; 
+            text-align: center; 
+            border: 1px solid #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .tarjeta h3 { margin: 0; font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .tarjeta p { font-size: 1.6rem; margin: 15px 0 0 0; font-weight: bold; color: #03dac6; }
+        .tarjeta p.saldo { color: #bb86fc; }
+        .tarjeta p.ingreso { color: #4caf50; }
 
-        .boton-volver { display: inline-block; margin-top: 40px; color: #888; text-decoration: none; font-size: 0.9rem; }
-        .boton-volver:hover { color: white; text-decoration: underline; }
-        
-        #mensaje-estado { color: #888; font-size: 0.8rem; margin-top: 10px; }
-    </style>
+        .boton-volver { display: inline-block; margin-top: 40px; color: #888; text-decoration: none; font-size: 0.9rem; }
+        .boton-volver:hover { color: white; text-decoration: underline; }
+        
+        #mensaje-estado { color: #888; font-size: 0.8rem; margin-top: 10px; }
+    </style>
 </head>
 <body>
-    <div class="contenedor-gastos">
-        <h1>📊 Gastos - Mayo 2026</h1>
-        
-        <a href="https://docs.google.com/spreadsheets/d/1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw/edit" target="_blank" class="boton-registro">📝 EDITAR EN GOOGLE SHEETS</a>
-        
-        <div class="resumen">
-            <div class="tarjeta"><h3>Ingresos Mes</h3><p id="ingresos-mes" class="ingreso">0,00 €</p></div>
-            <div class="tarjeta"><h3>Gastos Mes</h3><p id="gasto-actual">0,00 €</p></div>
-            <div class="tarjeta"><h3>Disponible</h3><p id="disponible">0,00 €</p></div>
-            <div class="tarjeta"><h3>Saldo Real</h3><p id="saldo-real" class="saldo">0,00 €</p></div>
-        </div>
+    <div class="contenedor-gastos">
+        <h1>📊 Gastos - Mayo 2026</h1>
+        
+        <a href="https://docs.google.com/spreadsheets/d/1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw/edit" target="_blank" class="boton-registro">📝 EDITAR EN GOOGLE SHEETS</a>
+        
+        <div class="resumen">
+            <div class="tarjeta"><h3>Ingresos Mes</h3><p id="ingresos-mes" class="ingreso">0,00 €</p></div>
+            <div class="tarjeta"><h3>Gastos Mes</h3><p id="gasto-actual">0,00 €</p></div>
+            <div class="tarjeta"><h3>Balance Mensual</h3><p id="balance-mes">0,00 €</p></div>
+            <div class="tarjeta"><h3>Saldo Real</h3><p id="saldo-real" class="saldo">0,00 €</p></div>
+        </div>
 
-        <p id="mensaje-estado">Sincronizando con Google Sheets...</p>
+        <p id="mensaje-estado">Sincronizando con Google Sheets...</p>
 
-        <a href="index.html" class="boton-volver">← Volver al Portal Principal</a>
-    </div>
+        <a href="index.html" class="boton-volver">← Volver al Portal Principal</a>
+    </div>
 
-    <script>
-        const spreadsheetId = "1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw";
-        const gid = "919344298";
-        const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&gid=${gid}&t=${Date.now()}`;
+    <script>
+        const spreadsheetId = "1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw";
+        const gid = "919344298";
+        const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&gid=${gid}&t=${Date.now()}`;
 
-        async function actualizarDatos() {
-            const estado = document.getElementById('mensaje-estado');
-            try {
-                const respuesta = await fetch(url);
-                const texto = await respuesta.text();
-                const json = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
-                const filas = json.table.rows;
+        async function actualizarDatos() {
+            const estado = document.getElementById('mensaje-estado');
+            try {
+                const respuesta = await fetch(url);
+                const texto = await respuesta.text();
+                const json = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
+                const filas = json.table.rows;
 
-                // Función mejorada con logs para depuración
-                const extraerDato = (f, c) => {
-                    try {
-                        if (!filas[f] || !filas[f].c[c]) return 0;
-                        const celda = filas[f].c[c];
-                        
-                        // Intentamos obtener el valor por prioridad
-                        let val = celda.v !== null ? celda.v : (celda.f ? celda.f : 0);
-                        
-                        if (typeof val === 'number') return val;
-                        
-                        // Limpieza agresiva de strings (ej: "-843,81 €")
-                        let limpio = val.toString().replace(/[^\d.,-]/g, '').replace(',', '.');
-                        return parseFloat(limpio) || 0;
-                    } catch(e) { return 0; }
-                };
+                const extraerDato = (f, c) => {
+                    try {
+                        if (!filas[f] || !filas[f].c[c]) return 0;
+                        const celda = filas[f].c[c];
+                        let val = celda.v !== null ? celda.v : (celda.f ? celda.f : 0);
+                        if (typeof val === 'number') return val;
+                        let limpio = val.toString().replace(/[^\d.,-]/g, '').replace(',', '.');
+                        return parseFloat(limpio) || 0;
+                    } catch(e) { return 0; }
+                };
 
-// ASIGNACIÓN DE DATOS (Mapeo de celdas)
-                // Ajustamos las filas para encontrar el dato correcto del gasto
-                // Si el gasto no está en la fila 0, buscará en la 2 o la 1.
-                
-                const gastos = extraerDato(0, 6) || extraerDato(2, 6) || extraerDato(1, 6);
-                const ingresos = extraerDato(2, 6) || extraerDato(1, 6) || extraerDato(3, 6);
-                const disponible = extraerDato(1, 7) || extraerDato(0, 7) || extraerDato(2, 7);
+                // Mapeo actualizado
+                const ingresos = extraerDato(2, 6) || extraerDato(1, 6) || extraerDato(3, 6);
+                const gastos = extraerDato(0, 6) || extraerDato(2, 6) || extraerDato(1, 6);
+                const balance = extraerDato(4, 6); // G5 es fila 4, columna 6
+                const saldo = extraerDato(1, 7) || extraerDato(0, 7) || extraerDato(2, 7);
 
-                const moneda = (n) => Math.abs(n).toLocaleString('es-ES', { 
-                    style: 'currency', 
-                    currency: 'EUR' 
-                });
+                const moneda = (n) => n.toLocaleString('es-ES', { 
+                    style: 'currency', 
+                    currency: 'EUR' 
+                });
 
-                document.getElementById('ingresos-mes').innerText = moneda(ingresos);
-                document.getElementById('gasto-actual').innerText = moneda(gastos);
-                document.getElementById('disponible').innerText = moneda(disponible);
-                document.getElementById('saldo-real').innerText = moneda(disponible);
+                document.getElementById('ingresos-mes').innerText = moneda(ingresos);
+                document.getElementById('gasto-actual').innerText = moneda(gastos);
+                
+                // Actualizar Balance con lógica de color
+                const elBalance = document.getElementById('balance-mes');
+                elBalance.innerText = moneda(balance);
+                elBalance.style.color = balance < 0 ? "#ff4444" : "#03dac6";
+                
+                document.getElementById('saldo-real').innerText = moneda(saldo);
 
-                estado.innerText = "✅ Sincronizado";
-                estado.style.color = "#03dac6";
-            } catch (e) {
-                console.error(e);
-                estado.innerText = "⚠️ Error de lectura";
-            }
-        }
+                estado.innerText = "✅ Sincronizado";
+                estado.style.color = "#03dac6";
+            } catch (e) {
+                console.error(e);
+                estado.innerText = "⚠️ Error de lectura";
+            }
+        }
 
-        actualizarDatos();
-        setInterval(actualizarDatos, 300000);
-    </script>
+        actualizarDatos();
+        setInterval(actualizarDatos, 300000);
+    </script>
 </body>
 </html>

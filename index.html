@@ -24,10 +24,15 @@
             position: absolute; top: 30px; right: 30px;
             background: #1e1e1e; border: 1px solid #333;
             padding: 20px; border-radius: 20px;
-            text-align: center; width: 200px;
+            text-align: center; width: 220px;
         }
         .widget-liga span { font-size: 0.7rem; color: #bb86fc; text-transform: uppercase; letter-spacing: 1px; }
-        .widget-liga p { margin: 8px 0 0 0; font-weight: 600; font-size: 1rem; }
+        .widget-liga p { margin: 8px 0 0 0; }
+        #partido-rival { font-weight: 600; font-size: 1rem; }
+        #partido-info { font-size: 0.75rem; opacity: 0.7; text-transform: capitalize; }
+        #partido-cuenta { font-size: 0.85rem; font-weight: 600; color: #03dac6; }
+        #partido-cuenta.en-juego { color: #ff5c5c; }
+        #partido-aviso { font-size: 0.65rem; opacity: 0.5; }
 
         /* Reloj y Fecha */
         #reloj-contenedor { text-align: center; margin-bottom: 40px; }
@@ -68,7 +73,9 @@
     <div class="widget-liga" id="widget-liga">
         <span>LaLiga 26/27</span>
         <p id="partido-rival">Cargando...</p>
-        <p id="partido-info" style="font-size: 0.7rem; opacity: 0.6;"></p>
+        <p id="partido-info"></p>
+        <p id="partido-cuenta"></p>
+        <p id="partido-aviso"></p>
     </div>
 
     <div id="reloj-contenedor">
@@ -86,6 +93,7 @@
     </div>
 
     <script>
+        /* ===== RELOJ ===== */
         function actualizarReloj() {
             const ahora = new Date();
             document.getElementById('reloj').textContent = ahora.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
@@ -94,15 +102,105 @@
         setInterval(actualizarReloj, 1000);
         actualizarReloj();
 
-        async function actualizarWidget() {
-            const gidLiga = "431024044";
-            const spreadsheetId = "1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw";
-            // headers=1: la primera fila de la hoja se trata como cabecera, así filas[0] es el primer partido.
-            // Si tu hoja NO tiene cabecera, cámbialo por headers=0.
-            const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&headers=1&gid=${gidLiga}&t=${Date.now()}`;
+        /* ===== WIDGET LALIGA: LÓGICA ===== */
+        // Año en el que empieza la temporada: de agosto a diciembre cuenta como ese año, de enero a julio como el siguiente.
+        const INICIO_TEMPORADA = 2026;
+        // Durante este tiempo desde el inicio, el partido se considera "en juego"; pasado ese tiempo, se salta solo.
+        const DURACION_PARTIDO = 2 * 60 * 60 * 1000; // 2 horas
 
+        const MESES = { enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5, julio: 6,
+                        agosto: 7, septiembre: 8, setiembre: 8, octubre: 9, noviembre: 10, diciembre: 11 };
+
+        // Convierte "jueves, 29 de octubre, 21:00" en una fecha real. Devuelve null si no entiende el texto.
+        function parseFecha(info) {
+            const m = (info || '').toLowerCase().match(/(\d{1,2})\s+de\s+([a-záéíóú]+)\D+(\d{1,2}):(\d{2})/);
+            if (!m) return null;
+            const mes = MESES[m[2]];
+            if (mes === undefined) return null;
+            const anio = mes >= 7 ? INICIO_TEMPORADA : INICIO_TEMPORADA + 1;
+            const fecha = new Date(anio, mes, parseInt(m[1], 10), parseInt(m[3], 10), parseInt(m[4], 10));
+            return fecha.getMonth() === mes ? fecha : null;
+        }
+
+        function construirPartidos(filas) {
+            return filas.map(f => ({ partido: f.partido, info: f.info, fecha: parseFecha(f.info) }));
+        }
+
+        // Elige el primer partido que aún no ha terminado, aunque en la hoja haya partidos ya jugados.
+        function proximoPartido(partidos, ahora) {
+            const conFecha = partidos.filter(p => p.fecha);
+            if (!conFecha.length) return partidos[0] || null;
+            return conFecha
+                .filter(p => ahora.getTime() < p.fecha.getTime() + DURACION_PARTIDO)
+                .sort((a, b) => a.fecha - b.fecha)[0] || null;
+        }
+
+        // Texto de la cuenta atrás.
+        function cuentaAtras(fecha, ahora) {
+            const diff = fecha.getTime() - ahora.getTime();
+            if (diff <= 0) return { texto: "¡En juego!", enJuego: true };
+
+            const inicioDia = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            const dias = Math.round((inicioDia(fecha) - inicioDia(ahora)) / 86400000);
+
+            if (dias === 0) {
+                const minTotal = Math.floor(diff / 60000);
+                const h = Math.floor(minTotal / 60);
+                const min = minTotal % 60;
+                return { texto: h > 0 ? `Hoy · faltan ${h} h ${min} min` : `Hoy · faltan ${min} min`, enJuego: false };
+            }
+            if (dias === 1) return { texto: "Mañana", enJuego: false };
+            return { texto: `Faltan ${dias} días`, enJuego: false };
+        }
+        /* ===== FIN LÓGICA ===== */
+
+        /* ===== WIDGET LALIGA: PANTALLA Y DATOS ===== */
+        const CLAVE_CACHE = 'liga-partidos';
+        let partidos = [];
+
+        function guardarCache(filas) {
+            try { localStorage.setItem(CLAVE_CACHE, JSON.stringify(filas)); } catch (e) {}
+        }
+        function leerCache() {
+            try { return JSON.parse(localStorage.getItem(CLAVE_CACHE)) || []; } catch (e) { return []; }
+        }
+
+        function pintar() {
+            if (!partidos.length) return;
+            const ahora = new Date();
+            const p = proximoPartido(partidos, ahora);
             const rivalEl = document.getElementById('partido-rival');
             const infoEl = document.getElementById('partido-info');
+            const cuentaEl = document.getElementById('partido-cuenta');
+
+            if (!p) {
+                rivalEl.innerText = "Sin más partidos";
+                infoEl.innerText = "";
+                cuentaEl.innerText = "";
+                return;
+            }
+            rivalEl.innerText = p.partido;
+            infoEl.innerText = p.info;
+            if (p.fecha) {
+                const c = cuentaAtras(p.fecha, ahora);
+                cuentaEl.innerText = c.texto;
+                cuentaEl.classList.toggle('en-juego', c.enJuego);
+            } else {
+                cuentaEl.innerText = "";
+            }
+        }
+
+        async function cargarPartidos() {
+            const gidLiga = "431024044";
+            const spreadsheetId = "1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw";
+            // headers=1: la fila 1 de la pestaña ("Partidos" / "Info") es la cabecera.
+            const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&headers=1&gid=${gidLiga}&t=${Date.now()}`;
+
+            const avisoEl = document.getElementById('partido-aviso');
+            const valor = (fila, i) => {
+                const c = fila.c && fila.c[i];
+                return c ? String(c.f || c.v || "").trim() : "";
+            };
 
             try {
                 const respuesta = await fetch(url);
@@ -110,25 +208,33 @@
 
                 const texto = await respuesta.text();
                 const json = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
-                const filas = json.table.rows;
+                if (json.status === 'error') throw new Error('Error de Google Sheets');
 
-                if (!filas.length) {
-                    rivalEl.innerText = "Sin partido";
-                    infoEl.innerText = "";
-                    return;
-                }
+                const filas = json.table.rows
+                    .map(r => ({ partido: valor(r, 0), info: valor(r, 1) }))
+                    .filter(f => f.partido);
 
-                const celda = (i) => filas[0].c[i] ? (filas[0].c[i].f || filas[0].c[i].v) : "";
-                rivalEl.innerText = celda(0) || "Sin partido";
-                infoEl.innerText = celda(1);
+                guardarCache(filas);
+                partidos = construirPartidos(filas);
+                avisoEl.innerText = "";
             } catch (e) {
                 console.error('Widget LaLiga:', e);
-                rivalEl.innerText = "No se pudo cargar";
-                infoEl.innerText = "Revisa que la hoja esté compartida como lectura por enlace";
+                const cache = leerCache();
+                if (cache.length) {
+                    partidos = construirPartidos(cache);
+                    avisoEl.innerText = "Datos guardados (sin conexión)";
+                } else {
+                    document.getElementById('partido-rival').innerText = "No se pudo cargar";
+                    document.getElementById('partido-info').innerText = "Revisa que la hoja esté compartida como lectura por enlace";
+                    return;
+                }
             }
+            pintar();
         }
-        actualizarWidget();
-        setInterval(actualizarWidget, 5 * 60 * 1000); // refresca cada 5 minutos
+
+        cargarPartidos();
+        setInterval(cargarPartidos, 5 * 60 * 1000); // vuelve a leer la hoja cada 5 minutos
+        setInterval(pintar, 30 * 1000);             // actualiza la cuenta atrás cada 30 segundos
     </script>
 </body>
 </html>

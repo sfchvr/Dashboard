@@ -7,24 +7,25 @@
     <style>
         body { background-color: #121212; color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; text-align: center; margin: 0; }
         .contenedor-gastos { max-width: 1100px; margin: auto; text-align: left; padding-top: 20px; }
-        h1 { color: #ffff; font-size: 1.8rem; margin-bottom: 20px; }
+        h1 { color: #fff; font-size: 1.8rem; margin-bottom: 20px; }
 
         /* Selector de mes */
         .selector-mes { margin-bottom: 30px; display: flex; align-items: center; justify-content: center; gap: 15px; }
         select { background: #1e1e1e; color: white; padding: 10px; border-radius: 8px; border: 1px solid #333; font-size: 1rem; cursor: pointer; }
 
-        .boton-registro { 
-            display: block; width: 100%; padding: 18px; background-color: #378049; 
-            color: black; text-align: center; border-radius: 12px; font-weight: bold; 
+        .boton-registro {
+            display: block; width: 100%; padding: 18px; background-color: #378049;
+            color: #fff; text-align: center; border-radius: 12px; font-weight: bold;
             text-decoration: none; margin-bottom: 30px; transition: 0.3s; box-sizing: border-box;
         }
-        .boton-registro:hover { background-color: #ffff; transform: translateY(-3px); }
+        .boton-registro:hover { background-color: #fff; color: #000; transform: translateY(-3px); }
+        .boton-registro:focus-visible, .boton-volver:focus-visible, select:focus-visible { outline: 3px solid #03dac6; outline-offset: 3px; }
 
         .resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 40px; }
         .tarjeta { background: #1e1e1e; padding: 25px; border-radius: 15px; text-align: center; border: 1px solid #333; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .tarjeta h3 { margin: 0; font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
         .tarjeta p { font-size: 1.6rem; margin: 15px 0 0 0; font-weight: bold; color: #ff4444; }
-        .tarjeta p.saldo { color: #ffff; }
+        .tarjeta p.saldo { color: #fff; }
         .tarjeta p.ingreso { color: #4caf50; }
 
         .boton-volver { display: inline-block; margin-top: 40px; color: #888; text-decoration: none; font-size: 0.9rem; }
@@ -35,7 +36,7 @@
 <body>
     <div class="contenedor-gastos">
         <h1>📊 Control de Gastos</h1>
-        
+
         <div class="selector-mes">
             <label for="mes-select">Selecciona el mes:</label>
             <select id="mes-select" onchange="actualizarDatos()">
@@ -55,9 +56,9 @@
                 <option value="Balance anual">Balance anual</option>
             </select>
         </div>
-        
-        <a href="https://docs.google.com/spreadsheets/d/1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw/edit" target="_blank" class="boton-registro">📝 EDITAR EN GOOGLE SHEETS</a>
-        
+
+        <a href="https://docs.google.com/spreadsheets/d/1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw/edit" target="_blank" rel="noopener noreferrer" class="boton-registro">📝 EDITAR EN GOOGLE SHEETS</a>
+
         <div class="resumen">
             <div class="tarjeta"><h3>Ingresos</h3><p id="ingresos-mes" class="ingreso">0,00 €</p></div>
             <div class="tarjeta"><h3>Gastos</h3><p id="gasto-actual">0,00 €</p></div>
@@ -72,51 +73,72 @@
 
     <script>
         const spreadsheetId = "1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw";
-        
+
+        // Celdas de la hoja de las que sale cada dato (igual en todas las pestañas).
+        // Si algún día cambias de sitio una cifra en Google Sheets, solo hay que tocar esto.
+        const CELDAS = { ingresos: "G3", gastos: "G2", balance: "G6", saldo: "H2" };
+
+        let ultimaPeticion = 0; // evita que una respuesta lenta pise a una más reciente
+
+        // Lee una celda por su referencia de Sheets (p. ej. "G3").
+        // Con headers=1 la fila 1 de la hoja es la cabecera, así que la fila 2 es filas[0].
+        function leerCelda(filas, ref) {
+            const m = ref.match(/^([A-Z])(\d+)$/);
+            if (!m) return 0;
+            const col = m[1].charCodeAt(0) - 65;
+            const fila = parseInt(m[2], 10) - 2;
+            const celda = filas[fila] && filas[fila].c && filas[fila].c[col];
+            if (!celda || celda.v === null || celda.v === undefined) return 0;
+            if (typeof celda.v === 'number') return celda.v;
+            // Si llegara como texto ("1.234,56 €"): quitar puntos de millar y pasar la coma a punto decimal
+            const limpio = celda.v.toString().replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.');
+            return parseFloat(limpio) || 0;
+        }
+
         async function actualizarDatos() {
             const mes = document.getElementById('mes-select').value;
             const estado = document.getElementById('mensaje-estado');
-            estado.innerText = `Cargando datos de ${mes}...`;
+            const id = ++ultimaPeticion;
 
-            // Nota: Para que esto funcione, Google Sheets debe tener las pestañas nombradas exactamente así
-            const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(mes)}&t=${Date.now()}`;
+            estado.innerText = `Cargando datos de ${mes}...`;
+            estado.style.color = "#888";
+
+            // Las pestañas de Google Sheets deben llamarse exactamente igual que las opciones del selector.
+            // headers=1 fija la fila 1 como cabecera, para que las posiciones no cambien nunca.
+            const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(mes)}&t=${Date.now()}`;
 
             try {
                 const respuesta = await fetch(url);
+                if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+
                 const texto = await respuesta.text();
                 const json = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
+                if (json.status === 'error') throw new Error('Error de Google Sheets');
+
+                if (id !== ultimaPeticion) return; // ya se pidió otro mes después
+
                 const filas = json.table.rows;
-
-                const extraerDato = (f, c) => {
-                    try {
-                        if (!filas[f] || !filas[f].c[c]) return 0;
-                        const celda = filas[f].c[c];
-                        let val = celda.v !== null ? celda.v : (celda.f ? celda.f : 0);
-                        if (typeof val === 'number') return val;
-                        let limpio = val.toString().replace(/[^\d.,-]/g, '').replace(',', '.');
-                        return parseFloat(limpio) || 0;
-                    } catch(e) { return 0; }
-                };
-
-                const ingresos = extraerDato(2, 6) || extraerDato(1, 6) || extraerDato(3, 6);
-                const gastos = extraerDato(0, 6) || extraerDato(2, 6) || extraerDato(1, 6);
-                const balance = extraerDato(4, 6) || extraerDato(3, 6) || extraerDato(5, 6);
-                const saldo = extraerDato(1, 7) || extraerDato(0, 7) || extraerDato(2, 7);
+                const ingresos = leerCelda(filas, CELDAS.ingresos);
+                const gastos = leerCelda(filas, CELDAS.gastos);
+                const balance = leerCelda(filas, CELDAS.balance);
+                const saldo = leerCelda(filas, CELDAS.saldo);
 
                 const moneda = (n) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
 
                 document.getElementById('ingresos-mes').innerText = moneda(ingresos);
                 document.getElementById('gasto-actual').innerText = moneda(gastos);
-                
+
                 const elBalance = document.getElementById('balance-mes');
                 elBalance.innerText = moneda(balance);
-                elBalance.style.color = balance < 0 ? "#d61515" : "#19cf58";
-                
+                elBalance.style.color = balance < 0 ? "#ff5c5c" : "#19cf58";
+
                 document.getElementById('saldo-real').innerText = moneda(saldo);
                 estado.innerText = `✅ Datos de ${mes} cargados`;
                 estado.style.color = "#03dac6";
             } catch (e) {
-                estado.innerText = "⚠️ Error: Asegúrate de que la pestaña existe en tu Excel.";
+                if (id !== ultimaPeticion) return;
+                console.error('Gastos:', e);
+                estado.innerText = "⚠️ No se pudieron cargar los datos. Comprueba que la hoja está compartida por enlace y que la pestaña existe.";
                 estado.style.color = "#ff4444";
             }
         }

@@ -123,7 +123,8 @@
                 const balance = leerCelda(filas, CELDAS.balance);
                 const saldo = leerCelda(filas, CELDAS.saldo);
 
-                const moneda = (n) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
+                // useGrouping: 'always' fuerza el punto de miles también en cifras de 4 dígitos (4.211,83 €)
+                const moneda = (n) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', useGrouping: 'always' });
 
                 document.getElementById('ingresos-mes').innerText = moneda(ingresos);
                 document.getElementById('gasto-actual').innerText = moneda(gastos);

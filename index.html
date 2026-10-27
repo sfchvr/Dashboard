@@ -2,39 +2,42 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Portal Financiero - Jorge</title>
     <style>
-        body { 
-            background-color: #121212; 
-            color: #e0e0e0; 
-            font-family: 'Inter', 'Segoe UI', sans-serif; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
-            margin: 0; 
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 24px;
+            box-sizing: border-box;
         }
 
-        /* Widget Mundial */
-        .widget-mundial {
+        /* Widget LaLiga */
+        .widget-liga {
             position: absolute; top: 30px; right: 30px;
             background: #1e1e1e; border: 1px solid #333;
             padding: 20px; border-radius: 20px;
             text-align: center; width: 200px;
         }
-        .widget-mundial span { font-size: 0.7rem; color: #bb86fc; text-transform: uppercase; letter-spacing: 1px; }
-        .widget-mundial p { margin: 8px 0 0 0; font-weight: 600; font-size: 1rem; }
+        .widget-liga span { font-size: 0.7rem; color: #bb86fc; text-transform: uppercase; letter-spacing: 1px; }
+        .widget-liga p { margin: 8px 0 0 0; font-weight: 600; font-size: 1rem; }
 
         /* Reloj y Fecha */
         #reloj-contenedor { text-align: center; margin-bottom: 40px; }
-        #reloj { font-size: 4.5rem; font-weight: 200; color: #03dac6; margin: 0; }
-        #fecha { font-size: 1.1rem; color: #888; margin-bottom: 5px; }
+        #reloj { font-size: 4.5rem; font-weight: 200; color: #03dac6; margin: 0; font-variant-numeric: tabular-nums; }
+        #fecha { font-size: 1.1rem; color: #888; margin-bottom: 5px; text-transform: capitalize; }
 
         /* Botón Único de Gastos */
         .boton-gastos {
             background-color: #2e55d9;
-            color: #000;
+            color: #fff;
             padding: 25px 60px;
             border-radius: 20px;
             font-size: 1.5rem;
@@ -42,19 +45,27 @@
             font-weight: 700;
             transition: all 0.3s ease;
             display: flex; align-items: center; gap: 15px;
-            box-shadow: 0 10px 30px rgba(187, 134, 252, 0.2);
+            box-shadow: 0 10px 30px rgba(46, 85, 217, 0.3);
         }
-        .boton-gastos:hover { transform: scale(1.05); background-color: #03dac6; }
+        .boton-gastos:hover { transform: scale(1.05); background-color: #03dac6; color: #000; }
+        .boton-gastos:focus-visible, .link-rapido:focus-visible { outline: 3px solid #03dac6; outline-offset: 4px; }
 
         /* Accesos rápidos minimalistas */
         .accesos-rapidos { margin-top: 60px; display: flex; gap: 40px; }
-        .link-rapido { color: #555; text-decoration: none; font-size: 0.9rem; transition: 0.3s; }
+        .link-rapido { color: #777; text-decoration: none; font-size: 0.9rem; transition: 0.3s; }
         .link-rapido:hover { color: #fff; }
+
+        /* Móvil: el widget pasa a ir en el flujo normal para no solaparse con el reloj */
+        @media (max-width: 700px) {
+            .widget-liga { position: static; margin-bottom: 30px; }
+            #reloj { font-size: 3.2rem; }
+            .boton-gastos { padding: 20px 36px; font-size: 1.2rem; }
+        }
     </style>
 </head>
 <body>
 
-    <div class="widget-mundial" id="widget-mundial">
+    <div class="widget-liga" id="widget-liga">
         <span>LaLiga 26/27</span>
         <p id="partido-rival">Cargando...</p>
         <p id="partido-info" style="font-size: 0.7rem; opacity: 0.6;"></p>
@@ -70,37 +81,54 @@
     </a>
 
     <div class="accesos-rapidos">
-        <a href="https://mail.google.com" target="_blank" class="link-rapido"><span>✉️</span> Correo</a>
-        <a href="https://www.google.es/maps" target="_blank" class="link-rapido"><span>📍</span> Maps</a>
+        <a href="https://mail.google.com" target="_blank" rel="noopener noreferrer" class="link-rapido"><span>✉️</span> Correo</a>
+        <a href="https://www.google.es/maps" target="_blank" rel="noopener noreferrer" class="link-rapido"><span>📍</span> Maps</a>
     </div>
 
     <script>
         function actualizarReloj() {
             const ahora = new Date();
-            document.getElementById('reloj').textContent = ahora.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'});
+            document.getElementById('reloj').textContent = ahora.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
             document.getElementById('fecha').textContent = ahora.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
         }
         setInterval(actualizarReloj, 1000);
         actualizarReloj();
 
         async function actualizarWidget() {
-            const gidMundial = "431024044";
+            const gidLiga = "431024044";
             const spreadsheetId = "1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw";
-            const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&gid=${gidMundial}&t=${Date.now()}`;
-            
+            // headers=1: la primera fila de la hoja se trata como cabecera, así filas[0] es el primer partido.
+            // Si tu hoja NO tiene cabecera, cámbialo por headers=0.
+            const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&headers=1&gid=${gidLiga}&t=${Date.now()}`;
+
+            const rivalEl = document.getElementById('partido-rival');
+            const infoEl = document.getElementById('partido-info');
+
             try {
                 const respuesta = await fetch(url);
+                if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+
                 const texto = await respuesta.text();
                 const json = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
                 const filas = json.table.rows;
-                const rival = filas[0].c[0] ? (filas[0].c[0].f || filas[0].c[0].v) : "Sin partido";
-                const info = filas[0].c[1] ? (filas[0].c[1].f || filas[0].c[1].v) : "";
-                
-                document.getElementById('partido-rival').innerText = rival;
-                document.getElementById('partido-info').innerText = info;
-            } catch (e) { document.getElementById('partido-rival').innerText = "Error"; }
+
+                if (!filas.length) {
+                    rivalEl.innerText = "Sin partido";
+                    infoEl.innerText = "";
+                    return;
+                }
+
+                const celda = (i) => filas[0].c[i] ? (filas[0].c[i].f || filas[0].c[i].v) : "";
+                rivalEl.innerText = celda(0) || "Sin partido";
+                infoEl.innerText = celda(1);
+            } catch (e) {
+                console.error('Widget LaLiga:', e);
+                rivalEl.innerText = "No se pudo cargar";
+                infoEl.innerText = "Revisa que la hoja esté compartida como lectura por enlace";
+            }
         }
         actualizarWidget();
+        setInterval(actualizarWidget, 5 * 60 * 1000); // refresca cada 5 minutos
     </script>
 </body>
 </html>

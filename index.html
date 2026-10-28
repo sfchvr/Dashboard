@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Portal Financiero - Jorge</title>
     <style>
+        [hidden] { display: none !important; }
+
         body {
             background-color: #121212;
             color: #e0e0e0;
@@ -24,15 +26,44 @@
             position: absolute; top: 30px; right: 30px;
             background: #1e1e1e; border: 1px solid #333;
             padding: 20px; border-radius: 20px;
-            text-align: center; width: 220px;
+            text-align: center; width: 260px; box-sizing: border-box;
+            transition: width 0.25s ease, max-width 0.25s ease;
         }
-        .widget-liga span { font-size: 0.7rem; color: #bb86fc; text-transform: uppercase; letter-spacing: 1px; }
+        .widget-liga.abierto { width: 360px; }
+        .widget-liga span.cabecera { font-size: 0.7rem; color: #bb86fc; text-transform: uppercase; letter-spacing: 1px; }
         .widget-liga p { margin: 8px 0 0 0; }
+        #partido-jornada { font-size: 0.65rem; color: #bb86fc; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; margin-top: 4px; }
         #partido-rival { font-weight: 600; font-size: 1rem; }
         #partido-info { font-size: 0.75rem; opacity: 0.7; text-transform: capitalize; }
         #partido-cuenta { font-size: 0.85rem; font-weight: 600; color: #03dac6; }
         #partido-cuenta.en-juego { color: #ff5c5c; }
         #partido-aviso { font-size: 0.65rem; opacity: 0.5; }
+
+        /* Botón y panel de resultados */
+        .btn-resultados {
+            margin-top: 14px; background: transparent; color: #bb86fc;
+            border: 1px solid #333; border-radius: 10px;
+            padding: 6px 12px; font-size: 0.75rem; font-family: inherit; cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-resultados:hover { border-color: #bb86fc; color: #fff; }
+        .btn-resultados:focus-visible { outline: 3px solid #03dac6; outline-offset: 3px; }
+
+        #resumen-resultados { font-size: 0.7rem; opacity: 0.7; margin-top: 14px; }
+        #lista-resultados {
+            list-style: none; margin: 8px 0 0 0; padding: 0;
+            max-height: 50vh; overflow-y: auto; text-align: left;
+        }
+        #lista-resultados li {
+            display: grid; grid-template-columns: 10px 1fr auto; column-gap: 8px; align-items: baseline;
+            padding: 8px 0; border-top: 1px solid #2c2c2c; font-size: 0.8rem;
+        }
+        .res-marcador { font-weight: 700; font-variant-numeric: tabular-nums; }
+        .res-meta { grid-column: 2 / 4; font-size: 0.65rem; opacity: 0.55; }
+        .punto { width: 8px; height: 8px; border-radius: 50%; background: #666; align-self: center; }
+        .punto.v { background: #4caf50; }
+        .punto.e { background: #ffb300; }
+        .punto.d { background: #ff5c5c; }
 
         /* Reloj y Fecha */
         #reloj-contenedor { text-align: center; margin-bottom: 40px; }
@@ -60,9 +91,12 @@
         .link-rapido { color: #777; text-decoration: none; font-size: 0.9rem; transition: 0.3s; }
         .link-rapido:hover { color: #fff; }
 
-        /* Móvil: el widget pasa a ir en el flujo normal para no solaparse con el reloj */
+        /* Pantallas medianas y pequeñas: el widget pasa a ir en el flujo normal para no solaparse con el reloj */
+        @media (max-width: 1100px) {
+            .widget-liga { position: static; margin-bottom: 30px; width: 100%; max-width: 260px; }
+            .widget-liga.abierto { width: 100%; max-width: 360px; }
+        }
         @media (max-width: 700px) {
-            .widget-liga { position: static; margin-bottom: 30px; }
             #reloj { font-size: 3.2rem; }
             .boton-gastos { padding: 20px 36px; font-size: 1.2rem; }
         }
@@ -71,11 +105,18 @@
 <body>
 
     <div class="widget-liga" id="widget-liga">
-        <span>LaLiga 26/27</span>
+        <span class="cabecera">LaLiga 26/27</span>
+        <p id="partido-jornada" hidden></p>
         <p id="partido-rival">Cargando...</p>
         <p id="partido-info"></p>
         <p id="partido-cuenta"></p>
         <p id="partido-aviso"></p>
+
+        <button type="button" id="btn-resultados" class="btn-resultados" aria-expanded="false" aria-controls="panel-resultados" hidden>Ver resultados ▾</button>
+        <div id="panel-resultados" hidden>
+            <p id="resumen-resultados"></p>
+            <ul id="lista-resultados"></ul>
+        </div>
     </div>
 
     <div id="reloj-contenedor">
@@ -107,9 +148,12 @@
         const INICIO_TEMPORADA = 2026;
         // Durante este tiempo desde el inicio, el partido se considera "en juego"; pasado ese tiempo, se salta solo.
         const DURACION_PARTIDO = 2 * 60 * 60 * 1000; // 2 horas
+        // Palabra que identifica a tu equipo dentro del nombre del partido (para colorear victoria / empate / derrota).
+        const MI_EQUIPO = 'sevilla';
 
         const MESES = { enero: 0, febrero: 1, marzo: 2, abril: 3, mayo: 4, junio: 5, julio: 6,
                         agosto: 7, septiembre: 8, setiembre: 8, octubre: 9, noviembre: 10, diciembre: 11 };
+        const NOMBRES_RESULTADO = { v: 'Victoria', e: 'Empate', d: 'Derrota' };
 
         // Convierte "jueves, 29 de octubre, 21:00" en una fecha real. Devuelve null si no entiende el texto.
         function parseFecha(info) {
@@ -123,16 +167,29 @@
         }
 
         function construirPartidos(filas) {
-            return filas.map(f => ({ partido: f.partido, info: f.info, fecha: parseFecha(f.info) }));
+            return filas.map(f => ({
+                partido: f.partido,
+                info: f.info,
+                resultado: (f.resultado || '').trim(),
+                jornada: (f.jornada || '').trim(),
+                fecha: parseFecha(f.info)
+            }));
         }
 
-        // Elige el primer partido que aún no ha terminado, aunque en la hoja haya partidos ya jugados.
+        // Elige el primer partido sin resultado que aún no ha terminado, aunque en la hoja haya partidos ya jugados.
         function proximoPartido(partidos, ahora) {
             const conFecha = partidos.filter(p => p.fecha);
-            if (!conFecha.length) return partidos[0] || null;
+            if (!conFecha.length) return partidos.find(p => !p.resultado) || null;
             return conFecha
-                .filter(p => ahora.getTime() < p.fecha.getTime() + DURACION_PARTIDO)
+                .filter(p => !p.resultado && ahora.getTime() < p.fecha.getTime() + DURACION_PARTIDO)
                 .sort((a, b) => a.fecha - b.fecha)[0] || null;
+        }
+
+        // Partidos con resultado, del más reciente al más antiguo.
+        function partidosJugados(partidos) {
+            return partidos
+                .filter(p => p.resultado)
+                .sort((a, b) => (b.fecha ? b.fecha.getTime() : 0) - (a.fecha ? a.fecha.getTime() : 0));
         }
 
         // Texto de la cuenta atrás.
@@ -152,6 +209,31 @@
             if (dias === 1) return { texto: "Mañana", enJuego: false };
             return { texto: `Faltan ${dias} días`, enJuego: false };
         }
+
+        // "10" -> "Jornada 10"; cualquier otro texto (p. ej. "Copa del Rey") se deja tal cual.
+        function etiquetaJornada(j) {
+            if (!j) return '';
+            return /^\d+$/.test(j) ? `Jornada ${j}` : j;
+        }
+
+        // Devuelve 'v' (victoria), 'e' (empate), 'd' (derrota) o null si no se puede saber.
+        function resultadoEquipo(partido, resultado) {
+            const equipos = (partido || '').split(/\s+vs\s+/i);
+            const r = (resultado || '').match(/^\s*(\d+)\s*[-–:]\s*(\d+)\s*$/);
+            if (equipos.length !== 2 || !r) return null;
+            const local = equipos[0].toLowerCase().includes(MI_EQUIPO);
+            const visitante = equipos[1].toLowerCase().includes(MI_EQUIPO);
+            if (local === visitante) return null;
+            const golesMios = parseInt(local ? r[1] : r[2], 10);
+            const golesRival = parseInt(local ? r[2] : r[1], 10);
+            return golesMios > golesRival ? 'v' : golesMios < golesRival ? 'd' : 'e';
+        }
+
+        function resumenResultados(jugados) {
+            const c = { v: 0, e: 0, d: 0 };
+            jugados.forEach(p => { const r = resultadoEquipo(p.partido, p.resultado); if (r) c[r]++; });
+            return `${c.v} V · ${c.e} E · ${c.d} D`;
+        }
         /* ===== FIN LÓGICA ===== */
 
         /* ===== WIDGET LALIGA: PANTALLA Y DATOS ===== */
@@ -165,20 +247,26 @@
             try { return JSON.parse(localStorage.getItem(CLAVE_CACHE)) || []; } catch (e) { return []; }
         }
 
+        // Próximo partido + cuenta atrás (se repite cada 30 segundos)
         function pintar() {
             if (!partidos.length) return;
             const ahora = new Date();
             const p = proximoPartido(partidos, ahora);
+            const jornadaEl = document.getElementById('partido-jornada');
             const rivalEl = document.getElementById('partido-rival');
             const infoEl = document.getElementById('partido-info');
             const cuentaEl = document.getElementById('partido-cuenta');
 
             if (!p) {
+                jornadaEl.hidden = true;
                 rivalEl.innerText = "Sin más partidos";
                 infoEl.innerText = "";
                 cuentaEl.innerText = "";
                 return;
             }
+            const etiqueta = etiquetaJornada(p.jornada);
+            jornadaEl.innerText = etiqueta;
+            jornadaEl.hidden = !etiqueta;
             rivalEl.innerText = p.partido;
             infoEl.innerText = p.info;
             if (p.fecha) {
@@ -190,10 +278,71 @@
             }
         }
 
+        // Lista desplegable de resultados (solo se rehace cuando llegan datos nuevos)
+        function pintarResultados() {
+            const jugados = partidosJugados(partidos);
+            const widget = document.getElementById('widget-liga');
+            const btn = document.getElementById('btn-resultados');
+            const panel = document.getElementById('panel-resultados');
+            const lista = document.getElementById('lista-resultados');
+
+            btn.hidden = !jugados.length;
+            if (!jugados.length) {
+                panel.hidden = true;
+                widget.classList.remove('abierto');
+                return;
+            }
+
+            document.getElementById('resumen-resultados').innerText = resumenResultados(jugados);
+
+            const items = jugados.map(p => {
+                const r = resultadoEquipo(p.partido, p.resultado);
+
+                const punto = document.createElement('span');
+                punto.className = 'punto' + (r ? ' ' + r : '');
+                if (r) {
+                    punto.setAttribute('role', 'img');
+                    punto.setAttribute('aria-label', NOMBRES_RESULTADO[r]);
+                    punto.title = NOMBRES_RESULTADO[r];
+                }
+
+                const nombre = document.createElement('span');
+                nombre.textContent = p.partido;
+
+                const marcador = document.createElement('span');
+                marcador.className = 'res-marcador';
+                marcador.textContent = p.resultado;
+
+                const meta = document.createElement('span');
+                meta.className = 'res-meta';
+                const partes = [];
+                const etiqueta = etiquetaJornada(p.jornada);
+                if (etiqueta) partes.push(etiqueta);
+                if (p.fecha) partes.push(p.fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }));
+                meta.textContent = partes.join(' · ');
+
+                const li = document.createElement('li');
+                li.append(punto, nombre, marcador, meta);
+                return li;
+            });
+            lista.replaceChildren(...items);
+        }
+
+        // Abrir / cerrar el desplegable
+        document.getElementById('btn-resultados').addEventListener('click', () => {
+            const panel = document.getElementById('panel-resultados');
+            const btn = document.getElementById('btn-resultados');
+            const abrir = panel.hidden;
+            panel.hidden = !abrir;
+            document.getElementById('widget-liga').classList.toggle('abierto', abrir);
+            btn.setAttribute('aria-expanded', String(abrir));
+            btn.textContent = abrir ? 'Ocultar resultados ▴' : 'Ver resultados ▾';
+        });
+
         async function cargarPartidos() {
             const gidLiga = "431024044";
             const spreadsheetId = "1KZ1tqMvFPWKgGg0sheADgu7-MU2GD9gDd2BYTW8n2Bw";
-            // headers=1: la fila 1 de la pestaña ("Partidos" / "Info") es la cabecera.
+            // headers=1: la fila 1 de la pestaña ("Partidos" / "Info" / "Resultado" / "Jornada") es la cabecera.
             const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&headers=1&gid=${gidLiga}&t=${Date.now()}`;
 
             const avisoEl = document.getElementById('partido-aviso');
@@ -210,8 +359,9 @@
                 const json = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
                 if (json.status === 'error') throw new Error('Error de Google Sheets');
 
+                // Columnas: A = Partidos, B = Info, C = Resultado, D = Jornada
                 const filas = json.table.rows
-                    .map(r => ({ partido: valor(r, 0), info: valor(r, 1) }))
+                    .map(r => ({ partido: valor(r, 0), info: valor(r, 1), resultado: valor(r, 2), jornada: valor(r, 3) }))
                     .filter(f => f.partido);
 
                 guardarCache(filas);
@@ -230,6 +380,7 @@
                 }
             }
             pintar();
+            pintarResultados();
         }
 
         cargarPartidos();

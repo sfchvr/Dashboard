@@ -136,14 +136,26 @@
     </div>
 
     <script>
-        /* ===== RELOJ ===== */
-        function actualizarReloj() {
-            const ahora = new Date();
-            document.getElementById('reloj').textContent = ahora.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
-            document.getElementById('fecha').textContent = ahora.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-        }
-        setInterval(actualizarReloj, 1000);
-        actualizarReloj();
+/* ===== RELOJ ===== */
+// Cambia el nombre si quieres, o déjalo vacío ("") para un saludo sin nombre.
+const NOMBRE = "Jorge";
+
+// De 6:00 a 13:59 días, de 14:00 a 20:59 tardes, el resto noches.
+function saludoSegunHora(hora) {
+    if (hora >= 6 && hora < 14) return "Buenos días";
+    if (hora >= 14 && hora < 21) return "Buenas tardes";
+    return "Buenas noches";
+}
+
+function actualizarReloj() {
+    const ahora = new Date();
+    const saludo = saludoSegunHora(ahora.getHours());
+    document.getElementById('saludo').textContent = NOMBRE ? `${saludo}, ${NOMBRE}` : saludo;
+    document.getElementById('reloj').textContent = ahora.toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+    document.getElementById('fecha').textContent = ahora.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+setInterval(actualizarReloj, 1000);
+actualizarReloj();
 
         /* ===== WIDGET LALIGA: LÓGICA ===== */
         // Año en el que empieza la temporada: de agosto a diciembre cuenta como ese año, de enero a julio como el siguiente.

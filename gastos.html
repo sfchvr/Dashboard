@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Gastos - Jorge</title>
     <style>
+        [hidden] { display: none !important; }
+
         body { background-color: #121212; color: white; font-family: 'Segoe UI', sans-serif; padding: 20px; text-align: center; margin: 0; }
         .contenedor-gastos { max-width: 1100px; margin: auto; text-align: left; padding-top: 20px; }
         h1 { color: #fff; font-size: 1.8rem; margin-bottom: 20px; }
@@ -27,6 +29,26 @@
         .tarjeta p { font-size: 1.6rem; margin: 15px 0 0 0; font-weight: bold; color: #ff4444; }
         .tarjeta p.saldo { color: #fff; }
         .tarjeta p.ingreso { color: #4caf50; }
+
+        /* Tarjeta de balance con gráfico desplegable */
+        .tarjeta-balance { cursor: pointer; transition: border-color 0.2s; }
+        .tarjeta-balance:hover { border-color: #555; }
+        .btn-grafico {
+            margin-top: 14px; background: transparent; color: #bb86fc;
+            border: 1px solid #333; border-radius: 10px;
+            padding: 6px 12px; font-size: 0.75rem; font-family: inherit; cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-grafico:hover { border-color: #bb86fc; color: #fff; }
+        .btn-grafico:focus-visible { outline: 3px solid #03dac6; outline-offset: 3px; }
+
+        .panel-grafico { background: #1e1e1e; padding: 25px; border-radius: 15px; border: 1px solid #333; box-shadow: 0 4px 10px rgba(0,0,0,0.3); margin-bottom: 40px; }
+        .panel-grafico h2 { margin: 0 0 4px 0; font-size: 1.1rem; font-weight: 600; }
+        .panel-grafico .subtitulo { margin: 0 0 16px 0; color: #888; font-size: 0.8rem; }
+        .grafico-scroll { overflow-x: auto; }
+        .grafico-scroll svg { display: block; width: 100%; min-width: 560px; height: auto; }
+        #grafico-resumen { margin: 16px 0 0 0; font-size: 0.85rem; color: #bbb; line-height: 1.6; }
+        #grafico-estado { margin: 8px 0 0 0; font-size: 0.8rem; color: #888; }
 
         .boton-volver { display: inline-block; margin-top: 40px; color: #888; text-decoration: none; font-size: 0.9rem; }
         .boton-volver:hover { color: white; text-decoration: underline; }
@@ -62,9 +84,21 @@
         <div class="resumen">
             <div class="tarjeta"><h3>Ingresos</h3><p id="ingresos-mes" class="ingreso">0,00 €</p></div>
             <div class="tarjeta"><h3>Gastos</h3><p id="gasto-actual">0,00 €</p></div>
-            <div class="tarjeta"><h3>Balance</h3><p id="balance-mes">0,00 €</p></div>
+            <div class="tarjeta tarjeta-balance" id="tarjeta-balance">
+                <h3>Balance</h3>
+                <p id="balance-mes">0,00 €</p>
+                <button type="button" id="btn-grafico" class="btn-grafico" aria-expanded="false" aria-controls="panel-grafico">Ver evolución ▾</button>
+            </div>
             <div class="tarjeta"><h3>Saldo Real</h3><p id="saldo-real" class="saldo">0,00 €</p></div>
         </div>
+
+        <section id="panel-grafico" class="panel-grafico" hidden>
+            <h2>Balance mes a mes</h2>
+            <p class="subtitulo">Balance de cada mes del año</p>
+            <div class="grafico-scroll" id="grafico-contenido"></div>
+            <p id="grafico-resumen"></p>
+            <p id="grafico-estado" aria-live="polite"></p>
+        </section>
 
         <p id="mensaje-estado">Selecciona un mes para cargar datos...</p>
 
@@ -78,7 +112,20 @@
         // Si algún día cambias de sitio una cifra en Google Sheets, solo hay que tocar esto.
         const CELDAS = { ingresos: "G3", gastos: "G2", balance: "G6", saldo: "H2" };
 
-        let ultimaPeticion = 0; // evita que una respuesta lenta pise a una más reciente
+        // Pestañas de los meses (deben llamarse exactamente así en Google Sheets).
+        const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        const MESES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+        let ultimaPeticion = 0;      // evita que una respuesta lenta pise a una más reciente
+        let evolucionHora = 0;       // cuándo se cargó el gráfico por última vez
+        let cargandoEvolucion = false;
+
+        /* ===== LÓGICA ===== */
+        // useGrouping: 'always' fuerza el punto de miles también en cifras de 4 dígitos (4.211,83 €)
+        const moneda = (n) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', useGrouping: 'always' });
+
+        // Cifra sin decimales para las etiquetas del gráfico (-892, 1.234...)
+        const compacto = (n) => Math.round(n).toLocaleString('es-ES', { maximumFractionDigits: 0, useGrouping: 'always' });
 
         // Lee una celda por su referencia de Sheets (p. ej. "G3").
         // Con headers=1 la fila 1 de la hoja es la cabecera, así que la fila 2 es filas[0].
@@ -95,6 +142,63 @@
             return parseFloat(limpio) || 0;
         }
 
+        // Dibuja el gráfico de barras (SVG). datos = [{ mes, corto, balance, hayDatos }, ...]
+        function construirGrafico(datos) {
+            const W = 720, H = 300, izq = 10, der = 10, arriba = 34, abajo = 50;
+            const alto = H - arriba - abajo;
+            const ancho = W - izq - der;
+            const conDatos = datos.filter(d => d.hayDatos);
+            const max = Math.max(0, ...conDatos.map(d => d.balance));
+            const min = Math.min(0, ...conDatos.map(d => d.balance));
+            const rango = (max - min) || 1;
+            const yCero = arriba + (max / rango) * alto;
+            const col = ancho / datos.length;
+            const barra = Math.min(40, col * 0.6);
+
+            const partes = [];
+            partes.push(`<line x1="${izq}" x2="${W - der}" y1="${yCero}" y2="${yCero}" stroke="#444" stroke-width="1"/>`);
+
+            datos.forEach((d, i) => {
+                const cx = izq + col * i + col / 2;
+                partes.push(`<text x="${cx}" y="${H - 12}" text-anchor="middle" font-size="12" fill="${d.hayDatos ? '#aaa' : '#555'}">${d.corto}</text>`);
+                if (!d.hayDatos) return;
+
+                const h = Math.max(Math.abs(d.balance) / rango * alto, 2);
+                const positivo = d.balance >= 0;
+                const y = positivo ? yCero - h : yCero;
+                const color = positivo ? '#4caf50' : '#ff5c5c';
+                const yEtiqueta = positivo ? y - 6 : y + h + 14;
+
+                partes.push(`<g><title>${d.mes}: ${moneda(d.balance)}</title><rect x="${cx - barra / 2}" y="${y}" width="${barra}" height="${h}" rx="4" fill="${color}"/></g>`);
+                partes.push(`<text x="${cx}" y="${yEtiqueta}" text-anchor="middle" font-size="11" fill="#e0e0e0">${compacto(d.balance)}</text>`);
+            });
+
+            return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de barras con el balance de cada mes del año">${partes.join('')}</svg>`;
+        }
+
+        // Mejor mes, peor mes y suma de todos los meses con datos.
+        function resumenGrafico(datos) {
+            const con = datos.filter(d => d.hayDatos);
+            if (!con.length) return null;
+            const mejor = con.reduce((a, b) => (b.balance > a.balance ? b : a));
+            const peor = con.reduce((a, b) => (b.balance < a.balance ? b : a));
+            const total = con.reduce((suma, d) => suma + d.balance, 0);
+            return { mejor, peor, total };
+        }
+        /* ===== FIN LÓGICA ===== */
+
+        // Descarga una pestaña de la hoja y devuelve sus filas.
+        async function leerHoja(nombre) {
+            const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(nombre)}&t=${Date.now()}`;
+            const respuesta = await fetch(url);
+            if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
+
+            const texto = await respuesta.text();
+            const json = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
+            if (json.status === 'error') throw new Error('Error de Google Sheets');
+            return json.table.rows;
+        }
+
         async function actualizarDatos() {
             const mes = document.getElementById('mes-select').value;
             const estado = document.getElementById('mensaje-estado');
@@ -103,28 +207,15 @@
             estado.innerText = `Cargando datos de ${mes}...`;
             estado.style.color = "#888";
 
-            // Las pestañas de Google Sheets deben llamarse exactamente igual que las opciones del selector.
-            // headers=1 fija la fila 1 como cabecera, para que las posiciones no cambien nunca.
-            const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(mes)}&t=${Date.now()}`;
-
             try {
-                const respuesta = await fetch(url);
-                if (!respuesta.ok) throw new Error('HTTP ' + respuesta.status);
-
-                const texto = await respuesta.text();
-                const json = JSON.parse(texto.substring(texto.indexOf('{'), texto.lastIndexOf('}') + 1));
-                if (json.status === 'error') throw new Error('Error de Google Sheets');
-
+                // Las pestañas de Google Sheets deben llamarse exactamente igual que las opciones del selector.
+                const filas = await leerHoja(mes);
                 if (id !== ultimaPeticion) return; // ya se pidió otro mes después
 
-                const filas = json.table.rows;
                 const ingresos = leerCelda(filas, CELDAS.ingresos);
                 const gastos = leerCelda(filas, CELDAS.gastos);
                 const balance = leerCelda(filas, CELDAS.balance);
                 const saldo = leerCelda(filas, CELDAS.saldo);
-
-                // useGrouping: 'always' fuerza el punto de miles también en cifras de 4 dígitos (4.211,83 €)
-                const moneda = (n) => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', useGrouping: 'always' });
 
                 document.getElementById('ingresos-mes').innerText = moneda(ingresos);
                 document.getElementById('gasto-actual').innerText = moneda(gastos);
@@ -143,6 +234,61 @@
                 estado.style.color = "#ff4444";
             }
         }
+
+        /* ===== GRÁFICO DE EVOLUCIÓN ===== */
+        // Lee la pestaña de cada mes (las 12 a la vez) y dibuja el gráfico.
+        async function cargarEvolucion() {
+            if (cargandoEvolucion) return;
+            cargandoEvolucion = true;
+
+            const contenido = document.getElementById('grafico-contenido');
+            const resumen = document.getElementById('grafico-resumen');
+            const estado = document.getElementById('grafico-estado');
+            estado.innerText = "Cargando los 12 meses...";
+            estado.style.color = "#888";
+
+            const resultados = await Promise.allSettled(MESES.map(m => leerHoja(m)));
+            const datos = resultados.map((r, i) => {
+                const base = { mes: MESES[i], corto: MESES_CORTOS[i], balance: 0, hayDatos: false, error: false };
+                if (r.status !== 'fulfilled') return { ...base, error: true };
+                const ingresos = leerCelda(r.value, CELDAS.ingresos);
+                const gastos = leerCelda(r.value, CELDAS.gastos);
+                const balance = leerCelda(r.value, CELDAS.balance);
+                // Un mes sin ingresos, gastos ni balance se considera "sin datos" y no se dibuja.
+                return { ...base, balance, hayDatos: ingresos !== 0 || gastos !== 0 || balance !== 0 };
+            });
+
+            const fallidos = datos.filter(d => d.error).map(d => d.mes);
+            const r = resumenGrafico(datos);
+
+            if (!r) {
+                contenido.innerHTML = "";
+                resumen.innerText = "";
+                estado.innerText = fallidos.length
+                    ? "⚠️ No se pudieron leer los meses. Comprueba que la hoja está compartida por enlace."
+                    : "Todavía no hay datos en ningún mes.";
+                estado.style.color = fallidos.length ? "#ff4444" : "#888";
+            } else {
+                contenido.innerHTML = construirGrafico(datos);
+                resumen.innerText = `Mejor mes: ${r.mejor.mes} (${moneda(r.mejor.balance)}) · Peor mes: ${r.peor.mes} (${moneda(r.peor.balance)}) · Suma de los meses: ${moneda(r.total)}`;
+                estado.innerText = fallidos.length ? `⚠️ No se pudieron leer: ${fallidos.join(', ')}.` : "";
+                estado.style.color = "#ff4444";
+                evolucionHora = Date.now();
+            }
+            cargandoEvolucion = false;
+        }
+
+        // Pulsar la tarjeta de Balance abre o cierra el gráfico
+        document.getElementById('tarjeta-balance').addEventListener('click', () => {
+            const panel = document.getElementById('panel-grafico');
+            const btn = document.getElementById('btn-grafico');
+            const abrir = panel.hidden;
+            panel.hidden = !abrir;
+            btn.setAttribute('aria-expanded', String(abrir));
+            btn.textContent = abrir ? 'Ocultar evolución ▴' : 'Ver evolución ▾';
+            // Se vuelve a leer la hoja si es la primera vez o si han pasado más de 5 minutos
+            if (abrir && Date.now() - evolucionHora > 5 * 60 * 1000) cargarEvolucion();
+        });
 
         // Cargar al iniciar
         actualizarDatos();
